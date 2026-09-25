@@ -6,7 +6,7 @@ import 'api_client.dart';
 class SessionController extends ChangeNotifier {
   static String get defaultBaseUrl =>
       !kIsWeb && defaultTargetPlatform == TargetPlatform.android
-      ? 'http://10.0.2.2/Livestock_management/public/api/v1'
+      ? 'http://livestockos.bizzsmart.xyz/public/api/v1'
       : 'http://localhost/Livestock_management/public/api/v1';
 
   late SharedPreferences _preferences;

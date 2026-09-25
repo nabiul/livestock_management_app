@@ -102,15 +102,31 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        CircleAvatar(
-                          radius: 32,
-                          backgroundColor: Theme.of(
-                            context,
-                          ).colorScheme.primary,
-                          child: const Icon(
-                            Icons.agriculture,
-                            color: Colors.white,
-                            size: 34,
+                        Center(
+                          child: Container(
+                            width: 82,
+                            height: 82,
+                            padding: const EdgeInsets.all(7),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.surface,
+                              borderRadius: BorderRadius.circular(24),
+                              border: Border.all(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.outlineVariant,
+                              ),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Color(0x1A123522),
+                                  blurRadius: 20,
+                                  offset: Offset(0, 8),
+                                ),
+                              ],
+                            ),
+                            child: Image.asset(
+                              'assets/images/livestockos-logo.png',
+                              fit: BoxFit.contain,
+                            ),
                           ),
                         ),
                         const SizedBox(height: 18),

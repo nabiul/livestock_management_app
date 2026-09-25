@@ -675,7 +675,7 @@ class _ProfessionalReportsScreenState extends State<ProfessionalReportsScreen> {
               ),
               title: Text('${record['title']}'),
               subtitle: Text(
-                '${record['animal']?['tag_number'] ?? 'Animal'} · Due ${record['next_due_date']?.toString().split('T').first ?? ''}',
+                '${record['animal']?['tag_number'] ?? 'Animal'} · Due ${formatAppDate(record['next_due_date'])}',
               ),
             ),
         ],
@@ -839,7 +839,7 @@ class _ProfessionalReportsScreenState extends State<ProfessionalReportsScreen> {
           children: [
             Text(label, style: const TextStyle(fontSize: 10)),
             Text(
-              dateFormat.format(value),
+              displayDateFormat.format(value),
               style: const TextStyle(fontWeight: FontWeight.w700),
             ),
           ],

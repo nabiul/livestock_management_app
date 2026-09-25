@@ -161,7 +161,7 @@ class _TradesScreenState extends State<TradesScreen> {
                                 ),
                                 Text(
                                   '${party?['name'] ?? 'Walk-in'} · '
-                                  '${trade[widget.isSale ? 'sale_date' : 'purchase_date']?.toString().split('T').first ?? ''}',
+                                  '${formatAppDate(trade[widget.isSale ? 'sale_date' : 'purchase_date'])}',
                                 ),
                                 const SizedBox(height: 4),
                                 Wrap(
@@ -221,10 +221,20 @@ class _TradesScreenState extends State<TradesScreen> {
 }
 
 class TradeForm extends StatefulWidget {
-  const TradeForm({super.key, required this.api, required this.isSale});
+  const TradeForm({
+    super.key,
+    required this.api,
+    required this.isSale,
+    this.initialItemType,
+    this.initialReferenceId,
+    this.initialFarmId,
+  });
 
   final ApiClient api;
   final bool isSale;
+  final String? initialItemType;
+  final int? initialReferenceId;
+  final int? initialFarmId;
 
   @override
   State<TradeForm> createState() => _TradeFormState();
@@ -286,8 +296,27 @@ class _TradeFormState extends State<TradeForm> {
       animals = widget.api.listFrom(responses[4]);
       batches = widget.api.listFrom(responses[5]);
       species = widget.api.listFrom(responses[6]);
-      farmId = farms.isEmpty ? null : farms.first['id'] as int?;
+      farmId =
+          widget.initialFarmId ??
+          (farms.isEmpty ? null : farms.first['id'] as int?);
       accountId = accounts.isEmpty ? null : accounts.first['id'] as int?;
+      if (widget.isSale &&
+          widget.initialItemType != null &&
+          widget.initialReferenceId != null) {
+        final line = _lines.first;
+        line.type = widget.initialItemType!;
+        line.referenceId = widget.initialReferenceId;
+        line.unit = 'head';
+        line.quantity.text = '1';
+        line.headCount.text = '1';
+        final choices = line.type == 'livestock' ? animals : batches;
+        final selected = choices
+            .where((item) => item['id'] == line.referenceId)
+            .firstOrNull;
+        line.description.text = line.type == 'livestock'
+            ? 'Animal ${selected?['tag_number'] ?? ''}'
+            : 'Batch ${selected?['batch_code'] ?? ''}';
+      }
     } catch (error) {
       if (mounted) showMessage(context, errorMessage(error), error: true);
     } finally {
@@ -485,7 +514,7 @@ class _TradeFormState extends State<TradeForm> {
     },
     child: InputDecorator(
       decoration: const InputDecoration(labelText: 'Date'),
-      child: Text(dateFormat.format(date)),
+      child: Text(displayDateFormat.format(date)),
     ),
   );
 
@@ -505,10 +534,40 @@ class _TradeFormState extends State<TradeForm> {
         : null,
   );
 
+  Widget _wholeNumberField(
+    TextEditingController controller,
+    String label, {
+    int? maximum,
+  }) => TextFormField(
+    controller: controller,
+    keyboardType: TextInputType.number,
+    decoration: InputDecoration(
+      labelText: label,
+      helperText: maximum == null ? null : '$maximum head available',
+    ),
+    onChanged: (_) => setState(() {}),
+    validator: (value) {
+      final number = num.tryParse(value ?? '');
+      if (number == null || number < 1 || number != number.roundToDouble()) {
+        return 'Enter a whole number';
+      }
+      if (maximum != null && number > maximum) {
+        return 'Only $maximum available';
+      }
+      return null;
+    },
+  );
+
   Widget _lineCard(int index, _TradeLine line) {
     final types = widget.isSale
         ? ['inventory', 'livestock', 'livestock_batch', 'other']
         : ['inventory', 'livestock', 'livestock_batch', 'other'];
+    final selectedBatch = batches
+        .where((item) => item['id'] == line.referenceId)
+        .firstOrNull;
+    final availableHeads = int.tryParse(
+      '${selectedBatch?['current_quantity'] ?? ''}',
+    );
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
@@ -539,8 +598,10 @@ class _TradeFormState extends State<TradeForm> {
                           line.description.text = 'Individual livestock';
                         }
                       }
-                      if (line.type == 'livestock_batch' && !widget.isSale) {
+                      if (line.type == 'livestock_batch') {
                         line.unit = 'head';
+                        line.quantity.text = '1';
+                        line.headCount.text = '1';
                       }
                     }),
                   ),
@@ -654,13 +715,7 @@ class _TradeFormState extends State<TradeForm> {
                   ),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: TextFormField(
-                      controller: line.dateOfBirth,
-                      readOnly: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Date of birth',
-                        suffixIcon: Icon(Icons.calendar_month_outlined),
-                      ),
+                    child: InkWell(
                       onTap: () async {
                         final selected = await showDatePicker(
                           context: context,
@@ -671,9 +726,22 @@ class _TradeFormState extends State<TradeForm> {
                           lastDate: DateTime.now(),
                         );
                         if (selected != null) {
-                          line.dateOfBirth.text = dateFormat.format(selected);
+                          setState(() {
+                            line.dateOfBirth.text = dateFormat.format(selected);
+                          });
                         }
                       },
+                      child: InputDecorator(
+                        decoration: const InputDecoration(
+                          labelText: 'Date of birth',
+                          suffixIcon: Icon(Icons.calendar_month_outlined),
+                        ),
+                        child: Text(
+                          line.dateOfBirth.text.isEmpty
+                              ? 'Select date'
+                              : formatAppDate(line.dateOfBirth.text),
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -738,7 +806,80 @@ class _TradeFormState extends State<TradeForm> {
               validator: _required,
             ),
             const SizedBox(height: 10),
-            if (line.type == 'livestock' && !widget.isSale)
+            if (widget.isSale &&
+                (line.type == 'livestock' ||
+                    line.type == 'livestock_batch')) ...[
+              DropdownButtonFormField<String>(
+                key: ValueKey('sale-basis-${line.type}-${line.unit}'),
+                initialValue: line.unit,
+                decoration: const InputDecoration(labelText: 'Sell by'),
+                items: const [
+                  DropdownMenuItem(value: 'head', child: Text('Piece / head')),
+                  DropdownMenuItem(
+                    value: 'kg',
+                    child: Text('Live weight (kg)'),
+                  ),
+                ],
+                onChanged: (value) => setState(() {
+                  line.unit = value ?? 'head';
+                  line.quantity.text = line.unit == 'head' ? '1' : '';
+                  line.headCount.text = '1';
+                }),
+              ),
+              const SizedBox(height: 10),
+              if (line.type == 'livestock' && line.unit == 'head')
+                const InputDecorator(
+                  decoration: InputDecoration(labelText: 'Sale quantity'),
+                  child: Text('1 head'),
+                )
+              else if (line.type == 'livestock' && line.unit == 'kg')
+                _numberField(line.quantity, 'Live weight (kg)', required: true)
+              else if (line.type == 'livestock_batch' && line.unit == 'head')
+                _wholeNumberField(
+                  line.quantity,
+                  'Number of animals',
+                  maximum: availableHeads,
+                )
+              else
+                Row(
+                  children: [
+                    Expanded(
+                      child: _numberField(
+                        line.quantity,
+                        'Total live weight (kg)',
+                        required: true,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _wholeNumberField(
+                        line.headCount,
+                        'Heads included',
+                        maximum: availableHeads,
+                      ),
+                    ),
+                  ],
+                ),
+              if (line.unit == 'kg') ...[
+                const SizedBox(height: 8),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.primaryContainer.withValues(alpha: .45),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    line.type == 'livestock_batch'
+                        ? 'Total = live weight × rate per kg. Batch stock will reduce by heads included.'
+                        : 'Total = live weight × rate per kg. The selected animal will be marked sold.',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ),
+              ],
+            ] else if (line.type == 'livestock' && !widget.isSale)
               const InputDecorator(
                 decoration: InputDecoration(labelText: 'Purchase quantity'),
                 child: Text('1 head'),
@@ -767,17 +908,7 @@ class _TradeFormState extends State<TradeForm> {
                           : line.unit,
                       decoration: const InputDecoration(labelText: 'Unit'),
                       items:
-                          (line.type == 'livestock'
-                                  ? ['head', 'kg']
-                                  : [
-                                      'kg',
-                                      'gram',
-                                      'litre',
-                                      'piece',
-                                      'head',
-                                      'bag',
-                                      'box',
-                                    ])
+                          ['kg', 'gram', 'litre', 'piece', 'head', 'bag', 'box']
                               .map(
                                 (unit) => DropdownMenuItem(
                                   value: unit,
@@ -794,16 +925,17 @@ class _TradeFormState extends State<TradeForm> {
                   ),
                 ],
               ),
-            if (line.type == 'livestock_batch' &&
-                widget.isSale &&
-                line.unit == 'kg') ...[
-              const SizedBox(height: 10),
-              _numberField(line.headCount, 'Number of animals', required: true),
-            ],
             const SizedBox(height: 10),
             _numberField(
               line.price,
-              widget.isSale ? 'Unit sale price' : 'Unit cost',
+              widget.isSale &&
+                      (line.type == 'livestock' ||
+                          line.type == 'livestock_batch') &&
+                      line.unit == 'kg'
+                  ? 'Rate per kg'
+                  : widget.isSale
+                  ? 'Unit sale price'
+                  : 'Unit cost',
               required: true,
             ),
           ],
@@ -916,7 +1048,7 @@ class _InvoicePaymentFormState extends State<InvoicePaymentForm> {
               ),
             ),
             title: const Text('Payment date'),
-            subtitle: Text(dateFormat.format(date)),
+            subtitle: Text(displayDateFormat.format(date)),
             trailing: const Icon(Icons.calendar_month),
             onTap: () async {
               final selected = await showDatePicker(

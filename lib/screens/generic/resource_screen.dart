@@ -13,6 +13,7 @@ class FieldSpec {
     this.options = const [],
     this.lookupPath,
     this.lookupLabel,
+    this.availableOnly = false,
     this.required = false,
     this.createOnly = false,
     this.defaultValue,
@@ -28,6 +29,7 @@ class FieldSpec {
   final List<String> options;
   final String? lookupPath;
   final String Function(Map<String, dynamic>)? lookupLabel;
+  final bool availableOnly;
   final bool required;
   final bool createOnly;
   final dynamic defaultValue;
@@ -50,6 +52,7 @@ class ResourceScreen extends StatefulWidget {
     this.icon = Icons.list_alt,
     this.canDelete = true,
     this.trailing,
+    this.detailBuilder,
   });
 
   final ApiClient api;
@@ -62,6 +65,7 @@ class ResourceScreen extends StatefulWidget {
   final IconData icon;
   final bool canDelete;
   final Widget Function(Map<String, dynamic>)? trailing;
+  final Widget Function(Map<String, dynamic>)? detailBuilder;
 
   @override
   State<ResourceScreen> createState() => _ResourceScreenState();
@@ -124,6 +128,15 @@ class _ResourceScreenState extends State<ResourceScreen> {
     }
   }
 
+  Future<void> _view(Map<String, dynamic> item) async {
+    final page = widget.detailBuilder?.call(item);
+    if (page == null) return;
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute<void>(builder: (_) => page));
+    if (mounted) _load();
+  }
+
   @override
   Widget build(BuildContext context) {
     final filtered = _items.where((item) {
@@ -173,6 +186,9 @@ class _ResourceScreenState extends State<ResourceScreen> {
                   final item = filtered[index];
                   return Card(
                     child: ListTile(
+                      onTap: widget.detailBuilder == null
+                          ? null
+                          : () => _view(item),
                       contentPadding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
                       leading: CircleAvatar(child: Icon(widget.icon)),
                       title: Text(
@@ -182,21 +198,45 @@ class _ResourceScreenState extends State<ResourceScreen> {
                       subtitle: Text(widget.itemSubtitle(item)),
                       trailing:
                           widget.trailing?.call(item) ??
-                          PopupMenuButton<String>(
-                            onSelected: (value) {
-                              if (value == 'edit') _edit(item);
-                              if (value == 'delete') _delete(item);
-                            },
-                            itemBuilder: (_) => [
-                              const PopupMenuItem(
-                                value: 'edit',
-                                child: Text('Edit'),
-                              ),
-                              if (widget.canDelete)
-                                const PopupMenuItem(
-                                  value: 'delete',
-                                  child: Text('Delete'),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (widget.detailBuilder != null)
+                                IconButton(
+                                  onPressed: () => _view(item),
+                                  tooltip: 'View details',
+                                  icon: const Icon(Icons.visibility_outlined),
                                 ),
+                              PopupMenuButton<String>(
+                                tooltip: 'More actions',
+                                onSelected: (value) {
+                                  if (value == 'view') _view(item);
+                                  if (value == 'edit') _edit(item);
+                                  if (value == 'delete') _delete(item);
+                                },
+                                itemBuilder: (_) => [
+                                  if (widget.detailBuilder != null)
+                                    const PopupMenuItem(
+                                      value: 'view',
+                                      child: ListTile(
+                                        contentPadding: EdgeInsets.zero,
+                                        leading: Icon(
+                                          Icons.visibility_outlined,
+                                        ),
+                                        title: Text('View details'),
+                                      ),
+                                    ),
+                                  const PopupMenuItem(
+                                    value: 'edit',
+                                    child: Text('Edit'),
+                                  ),
+                                  if (widget.canDelete)
+                                    const PopupMenuItem(
+                                      value: 'delete',
+                                      child: Text('Delete'),
+                                    ),
+                                ],
+                              ),
                             ],
                           ),
                     ),
@@ -238,6 +278,8 @@ class _ResourceFormState extends State<ResourceForm> {
   bool _loading = false;
   bool _loadingLookups = true;
 
+  bool get _isEditing => widget.initial?['id'] != null;
+
   @override
   void initState() {
     super.initState();
@@ -262,15 +304,33 @@ class _ResourceFormState extends State<ResourceForm> {
   }
 
   Future<void> _loadLookups() async {
-    final paths = widget.fields
-        .where((field) => field.lookupPath != null)
-        .map((field) => field.lookupPath!)
-        .toSet();
     try {
-      for (final path in paths) {
-        _lookups[path] = widget.api.listFrom(
-          await widget.api.get(path, query: {'per_page': 100, 'available': 1}),
+      for (final field in widget.fields.where(
+        (field) => field.lookupPath != null,
+      )) {
+        final path = field.lookupPath!;
+        final key = _lookupKey(field);
+        if (_lookups.containsKey(key)) continue;
+
+        final items = widget.api.listFrom(
+          await widget.api.get(
+            path,
+            query: {'per_page': 100, if (field.availableOnly) 'available': 1},
+          ),
         );
+
+        final selectedId = int.tryParse('${_values[field.key] ?? ''}');
+        if (selectedId != null &&
+            !items.any((item) => item['id'] == selectedId)) {
+          try {
+            items.add(
+              widget.api.objectFrom(await widget.api.get('$path/$selectedId')),
+            );
+          } catch (_) {
+            // Keep the form usable if a historical selection is unavailable.
+          }
+        }
+        _lookups[key] = items;
       }
     } catch (error) {
       if (mounted) showMessage(context, errorMessage(error), error: true);
@@ -298,7 +358,7 @@ class _ResourceFormState extends State<ResourceForm> {
     setState(() => _loading = true);
     final payload = <String, dynamic>{};
     for (final field in widget.fields) {
-      if (field.createOnly && widget.initial != null) continue;
+      if (field.createOnly && _isEditing) continue;
       if (!_isVisible(field)) {
         payload[field.key] = null;
         continue;
@@ -308,7 +368,7 @@ class _ResourceFormState extends State<ResourceForm> {
           : _values[field.key];
     }
     try {
-      if (widget.initial == null) {
+      if (!_isEditing) {
         await widget.api.post(widget.endpoint, payload);
       } else {
         await widget.api.put(
@@ -336,6 +396,9 @@ class _ResourceFormState extends State<ResourceForm> {
 
     return true;
   }
+
+  String _lookupKey(FieldSpec field) =>
+      '${field.lookupPath}|${field.availableOnly}';
 
   @override
   Widget build(BuildContext context) {
@@ -372,6 +435,7 @@ class _ResourceFormState extends State<ResourceForm> {
   Widget _field(FieldSpec field) {
     if (field.type == FieldType.select) {
       return DropdownButtonFormField<dynamic>(
+        key: ValueKey('${field.key}:${_values[field.key]}'),
         initialValue: _values[field.key],
         isExpanded: true,
         decoration: InputDecoration(labelText: field.label),
@@ -381,11 +445,24 @@ class _ResourceFormState extends State<ResourceForm> {
         validator: field.required
             ? (value) => value == null ? '${field.label} is required' : null
             : null,
-        onChanged: (value) => setState(() => _values[field.key] = value),
+        onChanged: (value) => setState(() {
+          _values[field.key] = value;
+          final newborn = value == 'birth' || value == 'hatch';
+          if (field.key == 'type' && newborn) {
+            _values['unit'] = 'head';
+            if (_values['newborn_destination'] == 'individual') {
+              _controllers['quantity']?.text = '1';
+            }
+          }
+          if (field.key == 'newborn_destination' && value == 'individual') {
+            _controllers['quantity']?.text = '1';
+            _values['unit'] = 'head';
+          }
+        }),
       );
     }
     if (field.type == FieldType.lookup) {
-      final items = _lookups[field.lookupPath] ?? [];
+      final items = _lookups[_lookupKey(field)] ?? [];
       return DropdownButtonFormField<int?>(
         initialValue: int.tryParse('${_values[field.key] ?? ''}'),
         isExpanded: true,
@@ -418,29 +495,48 @@ class _ResourceFormState extends State<ResourceForm> {
       );
     }
     final controller = _controllers[field.key]!;
+    if (field.type == FieldType.date) {
+      return FormField<String>(
+        initialValue: controller.text,
+        validator: field.required
+            ? (value) => value == null || value.isEmpty
+                  ? '${field.label} is required'
+                  : null
+            : null,
+        builder: (state) => InkWell(
+          onTap: () async {
+            final selected = await showDatePicker(
+              context: context,
+              firstDate: DateTime(2000),
+              lastDate: DateTime(2100),
+              initialDate: DateTime.tryParse(controller.text) ?? DateTime.now(),
+            );
+            if (selected != null) {
+              controller.text = dateFormat.format(selected);
+              state.didChange(controller.text);
+            }
+          },
+          child: InputDecorator(
+            decoration: InputDecoration(
+              labelText: field.label,
+              errorText: state.errorText,
+              suffixIcon: const Icon(Icons.calendar_month_outlined),
+            ),
+            child: Text(
+              controller.text.isEmpty
+                  ? 'Select date'
+                  : formatAppDate(controller.text),
+            ),
+          ),
+        ),
+      );
+    }
     return TextFormField(
       controller: controller,
       maxLines: field.type == FieldType.multiline ? 3 : 1,
       keyboardType: field.type == FieldType.number
           ? const TextInputType.numberWithOptions(decimal: true)
-          : field.type == FieldType.date
-          ? TextInputType.datetime
           : TextInputType.text,
-      readOnly: field.type == FieldType.date,
-      onTap: field.type == FieldType.date
-          ? () async {
-              final selected = await showDatePicker(
-                context: context,
-                firstDate: DateTime(2000),
-                lastDate: DateTime(2100),
-                initialDate:
-                    DateTime.tryParse(controller.text) ?? DateTime.now(),
-              );
-              if (selected != null) {
-                controller.text = dateFormat.format(selected);
-              }
-            }
-          : null,
       decoration: InputDecoration(labelText: field.label),
       validator: field.required
           ? (value) => value == null || value.trim().isEmpty

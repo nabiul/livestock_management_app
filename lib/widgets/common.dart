@@ -5,6 +5,15 @@ import '../core/api_client.dart';
 
 final moneyFormat = NumberFormat.currency(symbol: '৳', decimalDigits: 2);
 final dateFormat = DateFormat('yyyy-MM-dd');
+final displayDateFormat = DateFormat('dd-MM-yyyy');
+
+String formatAppDate(dynamic value, {String fallback = ''}) {
+  if (value == null) return fallback;
+  final text = value.toString().trim();
+  if (text.isEmpty) return fallback;
+  final parsed = DateTime.tryParse(text);
+  return parsed == null ? text : displayDateFormat.format(parsed);
+}
 
 void showMessage(BuildContext context, String message, {bool error = false}) {
   ScaffoldMessenger.of(context).showSnackBar(

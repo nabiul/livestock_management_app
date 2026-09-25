@@ -223,7 +223,7 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
                         style: const TextStyle(fontWeight: FontWeight.w600),
                       ),
                       subtitle: Text(
-                        '${transaction['transaction_date']?.toString().split('T').first ?? ''} · Balance ${moneyFormat.format(num.tryParse('${transaction['running_balance']}') ?? 0)}',
+                        '${formatAppDate(transaction['transaction_date'])} · Balance ${moneyFormat.format(num.tryParse('${transaction['running_balance']}') ?? 0)}',
                       ),
                       trailing: Text(
                         '${transaction['direction'] == 'in' ? '+' : '-'}${moneyFormat.format(num.tryParse('${transaction['amount']}') ?? 0)}',
@@ -488,7 +488,7 @@ class _PartyStatementScreenState extends State<PartyStatementScreen> {
                         style: const TextStyle(fontWeight: FontWeight.w700),
                       ),
                       subtitle: Text(
-                        '${entry['entry_date']?.toString().split('T').first ?? ''} · ${entry['reference_number'] ?? 'No reference'}',
+                        '${formatAppDate(entry['entry_date'])} · ${entry['reference_number'] ?? 'No reference'}',
                       ),
                       trailing: Column(
                         mainAxisAlignment: MainAxisAlignment.center,

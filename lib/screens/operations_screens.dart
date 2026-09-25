@@ -4,6 +4,7 @@ import '../core/api_client.dart';
 import '../core/session_controller.dart';
 import '../widgets/common.dart';
 import 'generic/resource_screen.dart';
+import 'livestock_detail_screen.dart';
 
 class BatchesScreen extends StatefulWidget {
   const BatchesScreen({super.key, required this.api});
@@ -113,6 +114,19 @@ class _BatchesScreenState extends State<BatchesScreen> {
     }
   }
 
+  Future<void> viewBatch(Map<String, dynamic> batch) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => LivestockDetailScreen(
+          api: widget.api,
+          recordId: batch['id'] as int,
+          isBatch: true,
+        ),
+      ),
+    );
+    if (mounted) load();
+  }
+
   @override
   Widget build(BuildContext context) {
     if (loading) return const LoadingView();
@@ -158,68 +172,92 @@ class _BatchesScreenState extends State<BatchesScreen> {
                           num.tryParse('${item['initial_quantity']}') ?? 0;
                       final current =
                           num.tryParse('${item['current_quantity']}') ?? 0;
-                      return Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      '${item['batch_code']}',
-                                      style: Theme.of(
-                                        context,
-                                      ).textTheme.titleMedium,
-                                    ),
-                                  ),
-                                  StatusChip('${item['status']}'),
-                                  PopupMenuButton<String>(
-                                    onSelected: (value) {
-                                      if (value == 'edit') editBatch(item);
-                                      if (value == 'delete') deleteBatch(item);
-                                    },
-                                    itemBuilder: (_) => [
-                                      const PopupMenuItem(
-                                        value: 'edit',
-                                        child: Text('Edit'),
+                      return GestureDetector(
+                        onTap: () => viewBatch(item),
+                        child: Card(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        '${item['batch_code']}',
+                                        style: Theme.of(
+                                          context,
+                                        ).textTheme.titleMedium,
                                       ),
-                                      if (item['purchase_id'] == null)
-                                        const PopupMenuItem(
-                                          value: 'delete',
-                                          child: Text('Delete'),
-                                        ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                              Text(
-                                '${item['species']?['name'] ?? ''} · ${item['breed'] ?? 'No breed'} · ${item['farm']?['name'] ?? ''}',
-                              ),
-                              const SizedBox(height: 12),
-                              LinearProgressIndicator(
-                                value: initial == 0
-                                    ? 0
-                                    : (current / initial).clamp(0, 1),
-                              ),
-                              const SizedBox(height: 8),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    'Started ${item['initial_quantity']} head',
-                                  ),
-                                  Text(
-                                    '${item['current_quantity']} available',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w800,
                                     ),
-                                  ),
-                                ],
-                              ),
-                            ],
+                                    StatusChip('${item['status']}'),
+                                    IconButton(
+                                      onPressed: () => viewBatch(item),
+                                      tooltip: 'View details',
+                                      icon: const Icon(
+                                        Icons.visibility_outlined,
+                                      ),
+                                    ),
+                                    PopupMenuButton<String>(
+                                      tooltip: 'More actions',
+                                      onSelected: (value) {
+                                        if (value == 'view') viewBatch(item);
+                                        if (value == 'edit') editBatch(item);
+                                        if (value == 'delete') {
+                                          deleteBatch(item);
+                                        }
+                                      },
+                                      itemBuilder: (_) => [
+                                        const PopupMenuItem(
+                                          value: 'view',
+                                          child: ListTile(
+                                            contentPadding: EdgeInsets.zero,
+                                            leading: Icon(
+                                              Icons.visibility_outlined,
+                                            ),
+                                            title: Text('View details'),
+                                          ),
+                                        ),
+                                        const PopupMenuItem(
+                                          value: 'edit',
+                                          child: Text('Edit'),
+                                        ),
+                                        if (item['purchase_id'] == null)
+                                          const PopupMenuItem(
+                                            value: 'delete',
+                                            child: Text('Delete'),
+                                          ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                                Text(
+                                  '${item['species']?['name'] ?? ''} · ${item['breed'] ?? 'No breed'} · ${item['farm']?['name'] ?? ''}',
+                                ),
+                                const SizedBox(height: 12),
+                                LinearProgressIndicator(
+                                  value: initial == 0
+                                      ? 0
+                                      : (current / initial).clamp(0, 1),
+                                ),
+                                const SizedBox(height: 8),
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      'Started ${item['initial_quantity']} head',
+                                    ),
+                                    Text(
+                                      '${item['current_quantity']} available',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       );
@@ -387,7 +425,7 @@ class _HealthScreenState extends State<HealthScreen> {
                         ),
                         title: Text('${record['title']}'),
                         subtitle: Text(
-                          '${record['type']} · ${record['observed_on']?.toString().split('T').first ?? ''}\n${record['medicine'] ?? record['treatment'] ?? ''}',
+                          '${record['type']} · ${formatAppDate(record['observed_on'])}\n${record['medicine'] ?? record['treatment'] ?? ''}',
                         ),
                         isThreeLine: true,
                         trailing: PopupMenuButton<String>(
@@ -526,7 +564,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
       );
       if (selected != null) setState(() => change(selected));
     },
-    child: Text('$label ${dateFormat.format(value)}'),
+    child: Text('$label ${displayDateFormat.format(value)}'),
   );
   Widget _row(String label, dynamic value, {bool bold = false}) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 6),

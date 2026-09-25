@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../core/api_client.dart';
 import '../widgets/common.dart';
 import 'generic/resource_screen.dart';
+import 'livestock_detail_screen.dart';
 
 Widget farmsModule(ApiClient api) => ResourceScreen(
   api: api,
@@ -33,6 +34,11 @@ Widget animalsModule(ApiClient api) => ResourceScreen(
   endpoint: 'animals',
   permission: 'livestock',
   icon: Icons.pets_outlined,
+  detailBuilder: (item) => LivestockDetailScreen(
+    api: api,
+    recordId: item['id'] as int,
+    isBatch: false,
+  ),
   itemTitle: (item) => '${item['tag_number']} ${item['name'] ?? ''}',
   itemSubtitle: (item) =>
       '${item['species']?['name'] ?? 'Species'} · ${item['breed'] ?? 'No breed'} · ${item['farm']?['name'] ?? ''} · ${item['status'] ?? 'active'}',
@@ -215,7 +221,7 @@ Widget productionModule(ApiClient api) => ResourceScreen(
     } else if (item['source_type'] == 'batch') {
       source = item['source_livestock_batch']?['batch_code'];
     }
-    return '${item['quantity']} ${item['unit']} · ${item['recorded_on']?.toString().split('T').first ?? ''} · ${item['source_type'] ?? 'farm'}: ${source ?? 'Unknown'}';
+    return '${item['quantity']} ${item['unit']} · ${formatAppDate(item['recorded_on'])} · ${item['source_type'] ?? 'farm'}: ${source ?? 'Unknown'}';
   },
   fields: const [
     FieldSpec(
@@ -239,6 +245,7 @@ Widget productionModule(ApiClient api) => ResourceScreen(
       type: FieldType.lookup,
       lookupPath: 'animals',
       lookupLabel: _animalLabel,
+      availableOnly: true,
       required: true,
       visibleWhenKey: 'source_type',
       visibleWhenValues: ['individual'],
@@ -262,14 +269,120 @@ Widget productionModule(ApiClient api) => ResourceScreen(
       hiddenWhenValues: ['birth', 'hatch'],
     ),
     FieldSpec(
+      'newborn_destination',
+      'Newborn registration',
+      type: FieldType.select,
+      options: ['batch', 'individual'],
+      defaultValue: 'batch',
+      required: true,
+      visibleWhenKey: 'type',
+      visibleWhenValues: ['birth', 'hatch'],
+    ),
+    FieldSpec(
       'livestock_batch_id',
       'Newborn destination batch',
       type: FieldType.lookup,
       lookupPath: 'livestock-batches',
       lookupLabel: _batchLabel,
       required: true,
-      visibleWhenKey: 'type',
-      visibleWhenValues: ['birth', 'hatch'],
+      visibleWhenKey: 'newborn_destination',
+      visibleWhenValues: ['batch'],
+      hiddenWhenKey: 'type',
+      hiddenWhenValues: [
+        'milk',
+        'egg',
+        'wool',
+        'weight',
+        'meat',
+        'manure',
+        'other',
+      ],
+    ),
+    FieldSpec(
+      'offspring_species_id',
+      'Newborn species',
+      type: FieldType.lookup,
+      lookupPath: 'species',
+      required: true,
+      visibleWhenKey: 'newborn_destination',
+      visibleWhenValues: ['individual'],
+      hiddenWhenKey: 'type',
+      hiddenWhenValues: [
+        'milk',
+        'egg',
+        'wool',
+        'weight',
+        'meat',
+        'manure',
+        'other',
+      ],
+    ),
+    FieldSpec(
+      'offspring_tag_number',
+      'Newborn tag number',
+      required: true,
+      visibleWhenKey: 'newborn_destination',
+      visibleWhenValues: ['individual'],
+      hiddenWhenKey: 'type',
+      hiddenWhenValues: [
+        'milk',
+        'egg',
+        'wool',
+        'weight',
+        'meat',
+        'manure',
+        'other',
+      ],
+    ),
+    FieldSpec(
+      'offspring_name',
+      'Newborn name',
+      visibleWhenKey: 'newborn_destination',
+      visibleWhenValues: ['individual'],
+      hiddenWhenKey: 'type',
+      hiddenWhenValues: [
+        'milk',
+        'egg',
+        'wool',
+        'weight',
+        'meat',
+        'manure',
+        'other',
+      ],
+    ),
+    FieldSpec(
+      'offspring_sex',
+      'Newborn sex',
+      type: FieldType.select,
+      options: ['male', 'female'],
+      visibleWhenKey: 'newborn_destination',
+      visibleWhenValues: ['individual'],
+      hiddenWhenKey: 'type',
+      hiddenWhenValues: [
+        'milk',
+        'egg',
+        'wool',
+        'weight',
+        'meat',
+        'manure',
+        'other',
+      ],
+    ),
+    FieldSpec(
+      'offspring_breed',
+      'Newborn breed',
+      visibleWhenKey: 'newborn_destination',
+      visibleWhenValues: ['individual'],
+      hiddenWhenKey: 'type',
+      hiddenWhenValues: [
+        'milk',
+        'egg',
+        'wool',
+        'weight',
+        'meat',
+        'manure',
+        'other',
+      ],
     ),
     FieldSpec(
       'type',
@@ -311,7 +424,7 @@ Widget accountingModule(ApiClient api) => ResourceScreen(
   icon: Icons.receipt_long_outlined,
   itemTitle: (item) => '${item['type']}'.toUpperCase(),
   itemSubtitle: (item) =>
-      '${moneyFormat.format(num.tryParse('${item['amount']}') ?? 0)} · ${item['transaction_date']?.toString().split('T').first ?? ''} · ${item['animal']?['tag_number'] ?? item['livestock_batch']?['batch_code'] ?? item['reference'] ?? 'Business'}',
+      '${moneyFormat.format(num.tryParse('${item['amount']}') ?? 0)} · ${formatAppDate(item['transaction_date'])} · ${item['animal']?['tag_number'] ?? item['livestock_batch']?['batch_code'] ?? item['reference'] ?? 'Business'}',
   fields: const [
     FieldSpec('farm_id', 'Farm', type: FieldType.lookup, lookupPath: 'farms'),
     FieldSpec(
@@ -320,6 +433,7 @@ Widget accountingModule(ApiClient api) => ResourceScreen(
       type: FieldType.lookup,
       lookupPath: 'animals',
       lookupLabel: _animalLabel,
+      availableOnly: true,
     ),
     FieldSpec(
       'livestock_batch_id',
