@@ -16,6 +16,8 @@ class _ProfessionalReportsScreenState extends State<ProfessionalReportsScreen> {
   Map<String, dynamic> data = {};
   DateTime from = DateTime(DateTime.now().year, DateTime.now().month, 1);
   DateTime to = DateTime.now();
+  List<Map<String, dynamic>> farms = [];
+  int? farmId;
   bool loading = true;
 
   @override
@@ -30,9 +32,14 @@ class _ProfessionalReportsScreenState extends State<ProfessionalReportsScreen> {
       data = widget.api.objectFrom(
         await widget.api.get(
           'reports',
-          query: {'from': dateFormat.format(from), 'to': dateFormat.format(to)},
+          query: {
+            'from': dateFormat.format(from),
+            'to': dateFormat.format(to),
+            if (farmId != null) 'farm_id': farmId,
+          },
         ),
       );
+      farms = widget.api.listFrom(_map(data['filter_options'])['farms']);
     } catch (error) {
       if (mounted) showMessage(context, errorMessage(error), error: true);
     } finally {
@@ -59,6 +66,8 @@ class _ProfessionalReportsScreenState extends State<ProfessionalReportsScreen> {
     final livestockProfitability = _map(data['livestock_profitability']);
     final individualProfit = _map(livestockProfitability['individual']);
     final batchProfit = _map(livestockProfitability['batches']);
+    final catalog = _list(data['report_catalog']);
+    final specialized = _map(data['specialized_reports']);
 
     return RefreshIndicator(
       onRefresh: load,
@@ -68,6 +77,10 @@ class _ProfessionalReportsScreenState extends State<ProfessionalReportsScreen> {
           _hero(_num(profit['net'])),
           const SizedBox(height: 12),
           _filters(),
+          if (catalog.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            _reportDirectory(catalog, specialized),
+          ],
           const SizedBox(height: 14),
           LayoutBuilder(
             builder: (context, size) {
@@ -287,6 +300,153 @@ class _ProfessionalReportsScreenState extends State<ProfessionalReportsScreen> {
     ),
   );
 
+  Widget _reportDirectory(
+    List<Map<String, dynamic>> catalog,
+    Map<String, dynamic> reports,
+  ) => Card(
+    child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SectionHeader(
+            title: 'Report directory',
+            subtitle: '${catalog.length} detailed operational reports',
+          ),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final columns = constraints.maxWidth >= 760
+                  ? 3
+                  : constraints.maxWidth >= 480
+                  ? 2
+                  : 1;
+              final width =
+                  (constraints.maxWidth - ((columns - 1) * 9)) / columns;
+              return Wrap(
+                spacing: 9,
+                runSpacing: 9,
+                children: [
+                  for (var index = 0; index < catalog.length; index++)
+                    SizedBox(
+                      width: width,
+                      child: _reportLink(
+                        index + 1,
+                        catalog[index],
+                        _map(reports[catalog[index]['key']]),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    ),
+  );
+
+  Widget _reportLink(
+    int number,
+    Map<String, dynamic> catalog,
+    Map<String, dynamic> report,
+  ) => Material(
+    color: const Color(0xFFF8FBF9),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(14),
+      side: const BorderSide(color: Color(0xFFE5ECE8)),
+    ),
+    clipBehavior: Clip.antiAlias,
+    child: InkWell(
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) =>
+              SpecializedReportScreen(report: report, number: number),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: _reportColor(number).withValues(alpha: .12),
+                borderRadius: BorderRadius.circular(11),
+              ),
+              child: Icon(
+                _reportIcon('${catalog['key']}'),
+                color: _reportColor(number),
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '$number. ${catalog['title']}',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Color(0xFF173B2A),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${catalog['row_count'] ?? 0} records',
+                    style: const TextStyle(
+                      color: Color(0xFF718078),
+                      fontSize: 10,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: Color(0xFFA6B1AB),
+              size: 19,
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+
+  Color _reportColor(int index) => const [
+    Color(0xFF07883F),
+    Color(0xFF2775D8),
+    Color(0xFFD9820B),
+    Color(0xFF8946D8),
+    Color(0xFFD9443A),
+  ][index % 5];
+
+  IconData _reportIcon(String key) => switch (key) {
+    'animal_history' => Icons.history,
+    'animal_age' => Icons.cake_outlined,
+    'breed' => Icons.pets_outlined,
+    'birth' || 'calving' => Icons.child_friendly_outlined,
+    'death' => Icons.heart_broken_outlined,
+    'purchase_sale' => Icons.swap_horiz,
+    'weight_growth' => Icons.monitor_weight_outlined,
+    'breeding' => Icons.favorite_outline,
+    'pregnancy' => Icons.pregnant_woman,
+    'vaccination' => Icons.vaccines_outlined,
+    'disease' || 'treatment_cost' => Icons.medical_services_outlined,
+    'milk_production' || 'lactation' => Icons.water_drop_outlined,
+    'feed_consumption' || 'feed_cost' => Icons.grass_outlined,
+    'inventory' => Icons.inventory_2_outlined,
+    'employee' => Icons.badge_outlined,
+    'income_expense' => Icons.account_balance_wallet_outlined,
+    'animal_profitability' ||
+    'farm_profitability' => Icons.trending_up_outlined,
+    _ => Icons.analytics_outlined,
+  };
+
   Widget _filters() => Card(
     child: Padding(
       padding: const EdgeInsets.all(14),
@@ -304,6 +464,15 @@ class _ProfessionalReportsScreenState extends State<ProfessionalReportsScreen> {
                 icon: const Icon(Icons.arrow_forward),
               ),
             ],
+          ),
+          const SizedBox(height: 10),
+          SearchableDropdown(
+            key: ValueKey('report-farm:$farmId'),
+            label: 'Farm',
+            items: farms,
+            value: farmId,
+            emptyLabel: 'All farms',
+            onChanged: (value) => setState(() => farmId = value),
           ),
           const SizedBox(height: 8),
           SingleChildScrollView(
@@ -873,4 +1042,227 @@ class _Legend extends StatelessWidget {
       Text(label, style: Theme.of(context).textTheme.bodySmall),
     ],
   );
+}
+
+class SpecializedReportScreen extends StatelessWidget {
+  const SpecializedReportScreen({
+    super.key,
+    required this.report,
+    required this.number,
+  });
+
+  final Map<String, dynamic> report;
+  final int number;
+
+  Map<String, dynamic> get summary => report['summary'] is Map
+      ? Map<String, dynamic>.from(report['summary'] as Map)
+      : {};
+  Map<String, dynamic> get columns => report['columns'] is Map
+      ? Map<String, dynamic>.from(report['columns'] as Map)
+      : {};
+  List<Map<String, dynamic>> get rows => report['rows'] is List
+      ? (report['rows'] as List)
+            .whereType<Map>()
+            .map((item) => Map<String, dynamic>.from(item))
+            .toList()
+      : [];
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: Text('${report['title'] ?? 'Report'}')),
+    body: ListView(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 30),
+      children: [
+        Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF076F37), Color(0xFF2FA65C)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(21),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: .16),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Text(
+                  '$number',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 13),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${report['title'] ?? 'Report'}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${report['description'] ?? ''}',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: .8),
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (summary.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final entry in summary.entries)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 9,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFE5ECE8)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        entry.key,
+                        style: const TextStyle(
+                          color: Color(0xFF718078),
+                          fontSize: 10,
+                        ),
+                      ),
+                      Text(
+                        _reportValue(entry.key, entry.value),
+                        style: const TextStyle(
+                          color: Color(0xFF173B2A),
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ],
+        const SizedBox(height: 16),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Report records',
+              style: TextStyle(
+                color: Color(0xFF173B2A),
+                fontSize: 16,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            Text(
+              '${rows.length} entries',
+              style: const TextStyle(color: Color(0xFF718078), fontSize: 11),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        if (rows.isEmpty)
+          const SizedBox(
+            height: 240,
+            child: EmptyView(
+              icon: Icons.analytics_outlined,
+              message: 'No records found for this period.',
+            ),
+          )
+        else
+          for (final row in rows) _rowCard(row),
+      ],
+    ),
+  );
+
+  Widget _rowCard(Map<String, dynamic> row) => Container(
+    margin: const EdgeInsets.only(bottom: 9),
+    padding: const EdgeInsets.all(13),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: const Color(0xFFE5ECE8)),
+    ),
+    child: Column(
+      children: [
+        for (final entry in columns.entries)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 3),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  width: 105,
+                  child: Text(
+                    '${entry.value}',
+                    style: const TextStyle(
+                      color: Color(0xFF718078),
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    _reportValue(entry.key, row[entry.key]),
+                    textAlign: TextAlign.right,
+                    style: const TextStyle(
+                      color: Color(0xFF173B2A),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    ),
+  );
+
+  static String _reportValue(String key, dynamic value) {
+    if (value == null || '$value'.isEmpty) return '—';
+    final normalized = key.toLowerCase().replaceAll(' ', '_');
+    final monetary =
+        normalized.contains('cost') ||
+        normalized.contains('income') ||
+        normalized.contains('expense') ||
+        normalized.contains('profit') ||
+        normalized.contains('value') ||
+        normalized == 'amount' ||
+        normalized == 'total' ||
+        normalized == 'paid' ||
+        normalized == 'due' ||
+        normalized == 'net';
+    if (monetary && num.tryParse('$value') != null) {
+      return moneyFormat.format(num.parse('$value'));
+    }
+    return '$value';
+  }
 }

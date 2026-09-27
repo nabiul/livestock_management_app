@@ -553,6 +553,22 @@ class _ResourceFormState extends State<ResourceForm> {
   String _lookupKey(FieldSpec field) =>
       '${field.lookupPath}|${field.availableOnly}';
 
+  List<Map<String, dynamic>> _lookupItems(FieldSpec field) {
+    final items = _lookups[_lookupKey(field)] ?? const [];
+    if (field.key != 'financial_category_id') return items;
+
+    final transactionType = '${_values['type'] ?? ''}'.toLowerCase();
+    if (transactionType != 'income' && transactionType != 'expense') {
+      return const [];
+    }
+
+    return items
+        .where(
+          (item) => '${item['type'] ?? ''}'.toLowerCase() == transactionType,
+        )
+        .toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loadingLookups) {
@@ -602,6 +618,10 @@ class _ResourceFormState extends State<ResourceForm> {
             : null,
         onChanged: (value) => setState(() {
           _values[field.key] = value;
+          if (field.key == 'type' &&
+              (value == 'income' || value == 'expense')) {
+            _values['financial_category_id'] = null;
+          }
           final newborn = value == 'birth' || value == 'hatch';
           if (field.key == 'type' && newborn) {
             _values['unit'] = 'head';
@@ -617,8 +637,11 @@ class _ResourceFormState extends State<ResourceForm> {
       );
     }
     if (field.type == FieldType.lookup) {
-      final items = _lookups[_lookupKey(field)] ?? [];
+      final items = _lookupItems(field);
       return DropdownButtonFormField<int?>(
+        key: ValueKey(
+          '${field.key}:${_values[field.key]}:${field.key == 'financial_category_id' ? _values['type'] : ''}',
+        ),
         initialValue: int.tryParse('${_values[field.key] ?? ''}'),
         isExpanded: true,
         decoration: InputDecoration(

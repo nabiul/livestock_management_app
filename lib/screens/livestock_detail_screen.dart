@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../core/api_client.dart';
 import '../widgets/common.dart';
 import 'generic/resource_screen.dart';
+import 'money_screen.dart';
 import 'trade_screen.dart';
 
 class LivestockDetailScreen extends StatefulWidget {
@@ -90,6 +91,12 @@ class _LivestockDetailScreenState extends State<LivestockDetailScreen> {
           label: 'Production',
           icon: Icons.agriculture_outlined,
           child: _production(data),
+        ),
+      if (access['inventory'] == true)
+        _DetailsTab(
+          label: 'Inventory',
+          icon: Icons.inventory_2_outlined,
+          child: _inventory(data),
         ),
       if (access['accounting'] == true)
         _DetailsTab(
@@ -372,6 +379,41 @@ class _LivestockDetailScreenState extends State<LivestockDetailScreen> {
     );
   }
 
+  Widget _inventory(Map<String, dynamic> data) {
+    final rows = _maps(data['inventory_transactions']);
+    return _recordsTab(
+      rows,
+      emptyIcon: Icons.inventory_2_outlined,
+      emptyMessage: widget.isBatch
+          ? 'No inventory movement linked to this batch.'
+          : 'No inventory movement linked to this livestock.',
+      createLabel: 'Add inventory movement',
+      onCreate: () => _createInventory(data),
+      builder: (row) {
+        final item = _map(row['inventory_item']);
+        final direction = '${row['direction'] ?? ''}'.toLowerCase();
+        return _RecordCard(
+          icon: direction == 'in'
+              ? Icons.move_to_inbox_outlined
+              : Icons.outbox_outlined,
+          title: _display(item['name'], fallback: 'Inventory item'),
+          subtitle: _join([
+            _label(row['type']),
+            formatAppDate(row['occurred_on']),
+            '${direction == 'out' ? '-' : '+'}${_display(row['quantity'])} ${_display(item['unit'], fallback: '')}',
+          ]),
+          badge: direction,
+          details: _join([
+            _number(row['unit_cost']) > 0
+                ? 'Unit cost: ${_money(row['unit_cost'])}'
+                : null,
+            row['notes'],
+          ], separator: '\n'),
+        );
+      },
+    );
+  }
+
   Widget _trade(Map<String, dynamic> data, Map<String, dynamic> access) {
     final sales = access['sales'] == true
         ? _maps(data['sale_items'])
@@ -577,6 +619,21 @@ class _LivestockDetailScreenState extends State<LivestockDetailScreen> {
           'vat_amount': 0,
           'tax_amount': 0,
         },
+      ),
+    );
+    if (saved == true) load();
+  }
+
+  Future<void> _createInventory(Map<String, dynamic> data) async {
+    final saved = await AppSheet.show<bool>(
+      context,
+      title:
+          'Add inventory movement · ${widget.isBatch ? data['batch_code'] : data['tag_number']}',
+      child: InventoryMovementForm(
+        api: widget.api,
+        initialFarmId: data['farm_id'] as int?,
+        initialAnimalId: widget.isBatch ? null : widget.recordId,
+        initialBatchId: widget.isBatch ? widget.recordId : null,
       ),
     );
     if (saved == true) load();
