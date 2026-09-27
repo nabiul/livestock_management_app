@@ -242,14 +242,18 @@ class _UserFormState extends State<UserForm> {
       children: [
         TextFormField(
           controller: name,
-          decoration: const InputDecoration(labelText: 'Full name'),
+          decoration: InputDecoration(
+            labelText: formFieldLabel('Full name', required: true),
+          ),
           validator: _required,
         ),
         const SizedBox(height: 12),
         TextFormField(
           controller: email,
           keyboardType: TextInputType.emailAddress,
-          decoration: const InputDecoration(labelText: 'Email'),
+          decoration: InputDecoration(
+            labelText: formFieldLabel('Email', required: true),
+          ),
           validator: _required,
         ),
         const SizedBox(height: 12),
@@ -257,9 +261,10 @@ class _UserFormState extends State<UserForm> {
           controller: password,
           obscureText: true,
           decoration: InputDecoration(
-            labelText: widget.initial == null
-                ? 'Password'
-                : 'New password (optional)',
+            labelText: formFieldLabel(
+              widget.initial == null ? 'Password' : 'New password (optional)',
+              required: widget.initial == null,
+            ),
           ),
           validator: (value) {
             if (widget.initial == null && (value?.length ?? 0) < 8) {
@@ -282,7 +287,9 @@ class _UserFormState extends State<UserForm> {
         const SizedBox(height: 12),
         DropdownButtonFormField<String>(
           initialValue: status,
-          decoration: const InputDecoration(labelText: 'Status'),
+          decoration: InputDecoration(
+            labelText: formFieldLabel('Status', required: true),
+          ),
           items: const [
             DropdownMenuItem(value: 'active', child: Text('Active')),
             DropdownMenuItem(value: 'inactive', child: Text('Inactive')),
@@ -368,7 +375,9 @@ class _RoleFormState extends State<RoleForm> {
       children: [
         TextFormField(
           controller: name,
-          decoration: const InputDecoration(labelText: 'Role name'),
+          decoration: InputDecoration(
+            labelText: formFieldLabel('Role name', required: true),
+          ),
           validator: (value) =>
               value == null || value.trim().isEmpty ? 'Required' : null,
         ),

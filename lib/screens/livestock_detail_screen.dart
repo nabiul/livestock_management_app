@@ -107,24 +107,55 @@ class _LivestockDetailScreenState extends State<LivestockDetailScreen> {
 
     return DefaultTabController(
       length: tabs.length,
-      child: Column(
-        children: [
-          _Header(data: data, isBatch: widget.isBatch),
-          Material(
-            color: Theme.of(context).colorScheme.surface,
-            child: TabBar(
-              isScrollable: true,
-              tabAlignment: TabAlignment.start,
-              tabs: [
-                for (final tab in tabs)
-                  Tab(icon: Icon(tab.icon, size: 20), text: tab.label),
-              ],
+      child: ColoredBox(
+        color: const Color(0xFFF4F8FB),
+        child: Column(
+          children: [
+            _Header(data: data, isBatch: widget.isBatch),
+            Container(
+              margin: const EdgeInsets.fromLTRB(14, 2, 14, 0),
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(15),
+                border: Border.all(color: const Color(0xFFE5ECE8)),
+              ),
+              child: TabBar(
+                isScrollable: true,
+                tabAlignment: TabAlignment.start,
+                dividerColor: Colors.transparent,
+                indicatorSize: TabBarIndicatorSize.tab,
+                indicator: BoxDecoration(
+                  color: const Color(0xFFDFF5E7),
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                labelColor: const Color(0xFF07883F),
+                unselectedLabelColor: const Color(0xFF718078),
+                labelStyle: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                ),
+                tabs: [
+                  for (final tab in tabs)
+                    Tab(
+                      height: 42,
+                      iconMargin: const EdgeInsets.only(right: 6),
+                      child: Row(
+                        children: [
+                          Icon(tab.icon, size: 18),
+                          const SizedBox(width: 6),
+                          Text(tab.label),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
             ),
-          ),
-          Expanded(
-            child: TabBarView(children: [for (final tab in tabs) tab.child]),
-          ),
-        ],
+            Expanded(
+              child: TabBarView(children: [for (final tab in tabs) tab.child]),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -813,51 +844,168 @@ class _Header extends StatelessWidget {
         : _join([data['tag_number'], data['name']], separator: ' · ');
     final species = _map(data['species']);
     final farm = _map(data['farm']);
+    final quantity = _display(data['current_quantity'], fallback: '0');
+    final status = _display(data['status'], fallback: 'active');
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 18),
+      margin: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            Theme.of(context).colorScheme.primaryContainer,
-            Theme.of(context).colorScheme.surface,
-          ],
+        gradient: const LinearGradient(
+          colors: [Color(0xFF076F37), Color(0xFF2FA65C)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x24036D31),
+            blurRadius: 20,
+            offset: Offset(0, 8),
+          ),
+        ],
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CircleAvatar(
-            radius: 30,
-            backgroundColor: Theme.of(context).colorScheme.primary,
-            foregroundColor: Theme.of(context).colorScheme.onPrimary,
-            child: Icon(
-              isBatch ? Icons.groups_2_outlined : Icons.pets,
-              size: 30,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name.isEmpty
-                      ? (isBatch ? 'Livestock batch' : 'Livestock')
-                      : name,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 58,
+                height: 58,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: .16),
+                  borderRadius: BorderRadius.circular(17),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: .22),
+                  ),
                 ),
-                const SizedBox(height: 3),
-                Text(_join([species['name'], data['breed'], farm['name']])),
-              ],
-            ),
+                child: Icon(
+                  isBatch ? Icons.groups_2_outlined : Icons.pets,
+                  color: Colors.white,
+                  size: 29,
+                ),
+              ),
+              const SizedBox(width: 13),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isBatch ? 'LIVESTOCK BATCH' : 'INDIVIDUAL LIVESTOCK',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: .72),
+                        fontSize: 9,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: .8,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      name.isEmpty
+                          ? (isBatch ? 'Livestock batch' : 'Livestock')
+                          : name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 21,
+                        height: 1.1,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      _join([species['name'], data['breed'], farm['name']]),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: .82),
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          StatusChip(_display(data['status'], fallback: 'active')),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: _HeaderMetric(
+                  label: isBatch ? 'Available stock' : 'Sex',
+                  value: isBatch ? '$quantity head' : _label(data['sex']),
+                ),
+              ),
+              Container(
+                width: 1,
+                height: 34,
+                color: Colors.white.withValues(alpha: .18),
+              ),
+              Expanded(
+                child: _HeaderMetric(label: 'Status', value: _label(status)),
+              ),
+              if (isBatch) ...[
+                Container(
+                  width: 1,
+                  height: 34,
+                  color: Colors.white.withValues(alpha: .18),
+                ),
+                Expanded(
+                  child: _HeaderMetric(
+                    label: 'Stock value',
+                    value: _money(
+                      _number(data['current_quantity']) *
+                          _number(data['average_unit_cost']),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
         ],
       ),
     );
   }
+}
+
+class _HeaderMetric extends StatelessWidget {
+  const _HeaderMetric({required this.label, required this.value});
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 8),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: .68),
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          value,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 13,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _InfoGrid extends StatelessWidget {
@@ -867,7 +1015,11 @@ class _InfoGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
-      final columns = constraints.maxWidth >= 700 ? 3 : 2;
+      final columns = constraints.maxWidth >= 700
+          ? 3
+          : constraints.maxWidth >= 340
+          ? 2
+          : 1;
       final width = (constraints.maxWidth - (columns - 1) * 10) / columns;
       return Wrap(
         spacing: 10,
@@ -877,21 +1029,22 @@ class _InfoGrid extends StatelessWidget {
             SizedBox(
               width: width,
               child: Container(
+                constraints: const BoxConstraints(minHeight: 82),
                 padding: const EdgeInsets.all(13),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surface,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: Theme.of(context).colorScheme.outlineVariant,
-                  ),
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(15),
+                  border: Border.all(color: const Color(0xFFE5ECE8)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       value.label,
-                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      style: const TextStyle(
+                        color: Color(0xFF718078),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                     const SizedBox(height: 5),
@@ -899,7 +1052,11 @@ class _InfoGrid extends StatelessWidget {
                       _display(value.value),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w700),
+                      style: const TextStyle(
+                        color: Color(0xFF173B2A),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ],
                 ),
@@ -927,14 +1084,27 @@ class _RecordCard extends StatelessWidget {
   final String? details;
 
   @override
-  Widget build(BuildContext context) => Card(
+  Widget build(BuildContext context) => Container(
     margin: const EdgeInsets.only(bottom: 10),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(17),
+      border: Border.all(color: const Color(0xFFE5ECE8)),
+    ),
     child: Padding(
       padding: const EdgeInsets.all(14),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CircleAvatar(child: Icon(icon, size: 20)),
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: const Color(0xFFDFF5E7),
+              borderRadius: BorderRadius.circular(13),
+            ),
+            child: Icon(icon, size: 21, color: const Color(0xFF07883F)),
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -956,14 +1126,16 @@ class _RecordCard extends StatelessWidget {
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.secondaryContainer,
+                          color: const Color(0xFFE6F1FF),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
                           badge!,
-                          style: Theme.of(context).textTheme.labelMedium,
+                          style: const TextStyle(
+                            color: Color(0xFF2775D8),
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
                       ),
                   ],
@@ -1013,7 +1185,27 @@ class _SectionTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.only(bottom: 10),
-    child: Text(text, style: Theme.of(context).textTheme.titleMedium),
+    child: Row(
+      children: [
+        Container(
+          width: 4,
+          height: 18,
+          decoration: BoxDecoration(
+            color: const Color(0xFF07883F),
+            borderRadius: BorderRadius.circular(99),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          text,
+          style: const TextStyle(
+            color: Color(0xFF173B2A),
+            fontSize: 16,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ],
+    ),
   );
 }
 
@@ -1026,9 +1218,9 @@ class _NoteCard extends StatelessWidget {
     width: double.infinity,
     padding: const EdgeInsets.all(16),
     decoration: BoxDecoration(
-      color: Theme.of(context).colorScheme.surface,
-      borderRadius: BorderRadius.circular(14),
-      border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+      color: const Color(0xFFFFF8E9),
+      borderRadius: BorderRadius.circular(15),
+      border: Border.all(color: const Color(0xFFF2E3C3)),
     ),
     child: Text(text),
   );

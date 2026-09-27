@@ -145,8 +145,11 @@ class _LoginScreenState extends State<LoginScreen> {
                         if (_register) ...[
                           TextFormField(
                             controller: _name,
-                            decoration: const InputDecoration(
-                              labelText: 'Your name',
+                            decoration: InputDecoration(
+                              labelText: formFieldLabel(
+                                'Your name',
+                                required: true,
+                              ),
                             ),
                             validator: (value) =>
                                 value == null || value.trim().isEmpty
@@ -156,8 +159,11 @@ class _LoginScreenState extends State<LoginScreen> {
                           const SizedBox(height: 12),
                           TextFormField(
                             controller: _farm,
-                            decoration: const InputDecoration(
-                              labelText: 'Farm name',
+                            decoration: InputDecoration(
+                              labelText: formFieldLabel(
+                                'Farm name',
+                                required: true,
+                              ),
                             ),
                             validator: (value) =>
                                 value == null || value.trim().isEmpty
@@ -167,8 +173,11 @@ class _LoginScreenState extends State<LoginScreen> {
                           const SizedBox(height: 12),
                           DropdownButtonFormField<String>(
                             initialValue: _farmType,
-                            decoration: const InputDecoration(
-                              labelText: 'Farm type',
+                            decoration: InputDecoration(
+                              labelText: formFieldLabel(
+                                'Farm type',
+                                required: true,
+                              ),
                             ),
                             items:
                                 const [
@@ -193,9 +202,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         TextFormField(
                           controller: _email,
                           keyboardType: TextInputType.emailAddress,
-                          decoration: const InputDecoration(
-                            labelText: 'Email',
-                            prefixIcon: Icon(Icons.email_outlined),
+                          decoration: InputDecoration(
+                            labelText: formFieldLabel('Email', required: true),
+                            prefixIcon: const Icon(Icons.email_outlined),
                           ),
                           validator: (value) =>
                               value == null || !value.contains('@')
@@ -207,7 +216,10 @@ class _LoginScreenState extends State<LoginScreen> {
                           controller: _password,
                           obscureText: _obscure,
                           decoration: InputDecoration(
-                            labelText: 'Password',
+                            labelText: formFieldLabel(
+                              'Password',
+                              required: true,
+                            ),
                             prefixIcon: const Icon(Icons.lock_outline),
                             suffixIcon: IconButton(
                               onPressed: () =>

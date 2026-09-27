@@ -311,7 +311,9 @@ class _TransferFormState extends State<TransferForm> {
         TextFormField(
           controller: amount,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          decoration: const InputDecoration(labelText: 'Amount'),
+          decoration: InputDecoration(
+            labelText: formFieldLabel('Amount', required: true),
+          ),
           validator: (value) =>
               (num.tryParse(value ?? '') ?? 0) <= 0 ? 'Enter an amount' : null,
         ),
@@ -667,7 +669,9 @@ class _PartyPaymentFormState extends State<PartyPaymentForm> {
           TextFormField(
             controller: amount,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: const InputDecoration(labelText: 'Amount'),
+            decoration: InputDecoration(
+              labelText: formFieldLabel('Amount', required: true),
+            ),
             validator: (value) => (num.tryParse(value ?? '') ?? 0) <= 0
                 ? 'Enter an amount'
                 : null,
@@ -766,7 +770,9 @@ class _InventoryMovementFormState extends State<InventoryMovementForm> {
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
             initialValue: type,
-            decoration: const InputDecoration(labelText: 'Movement type'),
+            decoration: InputDecoration(
+              labelText: formFieldLabel('Movement type', required: true),
+            ),
             items:
                 ['purchase', 'consumption', 'wastage', 'return', 'adjustment']
                     .map(
@@ -782,7 +788,9 @@ class _InventoryMovementFormState extends State<InventoryMovementForm> {
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
             initialValue: direction,
-            decoration: const InputDecoration(labelText: 'Direction'),
+            decoration: InputDecoration(
+              labelText: formFieldLabel('Direction', required: true),
+            ),
             items: const [
               DropdownMenuItem(value: 'in', child: Text('Stock in')),
               DropdownMenuItem(value: 'out', child: Text('Stock out')),
@@ -793,7 +801,9 @@ class _InventoryMovementFormState extends State<InventoryMovementForm> {
           TextFormField(
             controller: quantity,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: const InputDecoration(labelText: 'Quantity'),
+            decoration: InputDecoration(
+              labelText: formFieldLabel('Quantity', required: true),
+            ),
             validator: (value) =>
                 (num.tryParse(value ?? '') ?? 0) <= 0 ? 'Enter quantity' : null,
           ),

@@ -3,6 +3,9 @@ import 'package:intl/intl.dart';
 
 import '../core/api_client.dart';
 
+String formFieldLabel(String label, {bool required = false}) =>
+    required ? '$label *' : label;
+
 final moneyFormat = NumberFormat.currency(symbol: '৳', decimalDigits: 2);
 final dateFormat = DateFormat('yyyy-MM-dd');
 final displayDateFormat = DateFormat('dd-MM-yyyy');
@@ -153,6 +156,7 @@ class SearchableDropdown extends StatelessWidget {
     this.value,
     this.required = false,
     this.emptyLabel = 'None',
+    this.labelBuilder,
   });
 
   final String label;
@@ -161,6 +165,7 @@ class SearchableDropdown extends StatelessWidget {
   final ValueChanged<int?> onChanged;
   final bool required;
   final String emptyLabel;
+  final String Function(Map<String, dynamic>)? labelBuilder;
 
   @override
   Widget build(BuildContext context) => FormField<int?>(
@@ -177,7 +182,7 @@ class SearchableDropdown extends StatelessWidget {
           enableFilter: true,
           enableSearch: true,
           requestFocusOnTap: true,
-          label: Text(label),
+          label: Text(formFieldLabel(label, required: required)),
           hintText: 'Search and select',
           dropdownMenuEntries: [
             if (!required)
@@ -186,6 +191,7 @@ class SearchableDropdown extends StatelessWidget {
               (item) => DropdownMenuEntry<int?>(
                 value: item['id'] as int?,
                 label:
+                    labelBuilder?.call(item) ??
                     item['label']?.toString() ??
                     item['name']?.toString() ??
                     '#${item['id']}',

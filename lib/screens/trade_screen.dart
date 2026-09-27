@@ -294,7 +294,10 @@ class _TradeFormState extends State<TradeForm> {
       accounts = widget.api.listFrom(responses[2]);
       inventory = widget.api.listFrom(responses[3]);
       animals = widget.api.listFrom(responses[4]);
-      batches = widget.api.listFrom(responses[5]);
+      batches = widget.api
+          .listFrom(responses[5])
+          .where((item) => item['status'] != 'cancelled')
+          .toList();
       species = widget.api.listFrom(responses[6]);
       farmId =
           widget.initialFarmId ??
@@ -358,7 +361,7 @@ class _TradeFormState extends State<TradeForm> {
           };
           if (line.type == 'livestock_batch') {
             map['livestock_head_count'] = int.tryParse(line.headCount.text);
-            if (!widget.isSale) {
+            if (!widget.isSale && line.batchMode == 'new') {
               map['species_id'] = line.speciesId;
               map['batch_code'] = line.batchCode.text.trim();
               map['breed'] = line.breed.text.trim();
@@ -513,7 +516,9 @@ class _TradeFormState extends State<TradeForm> {
       if (selected != null) setState(() => date = selected);
     },
     child: InputDecorator(
-      decoration: const InputDecoration(labelText: 'Date'),
+      decoration: InputDecoration(
+        labelText: formFieldLabel('Date', required: true),
+      ),
       child: Text(displayDateFormat.format(date)),
     ),
   );
@@ -525,7 +530,9 @@ class _TradeFormState extends State<TradeForm> {
   }) => TextFormField(
     controller: controller,
     keyboardType: const TextInputType.numberWithOptions(decimal: true),
-    decoration: InputDecoration(labelText: label),
+    decoration: InputDecoration(
+      labelText: formFieldLabel(label, required: required),
+    ),
     onChanged: (_) => setState(() {}),
     validator: required
         ? (value) => (num.tryParse(value ?? '') ?? 0) <= 0
@@ -542,7 +549,7 @@ class _TradeFormState extends State<TradeForm> {
     controller: controller,
     keyboardType: TextInputType.number,
     decoration: InputDecoration(
-      labelText: label,
+      labelText: formFieldLabel(label, required: true),
       helperText: maximum == null ? null : '$maximum head available',
     ),
     onChanged: (_) => setState(() {}),
@@ -579,7 +586,9 @@ class _TradeFormState extends State<TradeForm> {
                 Expanded(
                   child: DropdownButtonFormField<String>(
                     initialValue: line.type,
-                    decoration: const InputDecoration(labelText: 'Item type'),
+                    decoration: InputDecoration(
+                      labelText: formFieldLabel('Item type', required: true),
+                    ),
                     items: types
                         .map(
                           (type) => DropdownMenuItem(
@@ -599,6 +608,7 @@ class _TradeFormState extends State<TradeForm> {
                         }
                       }
                       if (line.type == 'livestock_batch') {
+                        line.batchMode = 'new';
                         line.unit = 'head';
                         line.quantity.text = '1';
                         line.headCount.text = '1';
@@ -663,7 +673,9 @@ class _TradeFormState extends State<TradeForm> {
               const SizedBox(height: 10),
               TextFormField(
                 controller: line.tagNumber,
-                decoration: const InputDecoration(labelText: 'Tag number'),
+                decoration: InputDecoration(
+                  labelText: formFieldLabel('Tag number', required: true),
+                ),
                 validator: _required,
                 onChanged: (value) => line.description.text = value.isEmpty
                     ? 'Individual livestock'
@@ -770,39 +782,97 @@ class _TradeFormState extends State<TradeForm> {
                 }),
               ),
             if (line.type == 'livestock_batch' && !widget.isSale) ...[
-              SearchableDropdown(
-                label: 'Species',
-                items: species,
-                value: line.speciesId,
-                required: true,
-                onChanged: (value) => line.speciesId = value,
-              ),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: line.batchCode,
-                      decoration: const InputDecoration(
-                        labelText: 'Batch code',
-                      ),
-                      validator: _required,
-                    ),
+              DropdownButtonFormField<String>(
+                key: ValueKey('batch-mode-${line.batchMode}'),
+                initialValue: line.batchMode,
+                decoration: InputDecoration(
+                  labelText: formFieldLabel(
+                    'Purchase batch into',
+                    required: true,
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: TextFormField(
-                      controller: line.breed,
-                      decoration: const InputDecoration(labelText: 'Breed'),
-                    ),
+                ),
+                items: const [
+                  DropdownMenuItem(
+                    value: 'new',
+                    child: Text('Create new batch'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'existing',
+                    child: Text('Add to existing batch'),
                   ),
                 ],
+                onChanged: (value) => setState(() {
+                  line.batchMode = value ?? 'new';
+                  line.referenceId = null;
+                  line.description.text = line.batchMode == 'new'
+                      ? 'New livestock batch'
+                      : '';
+                }),
               ),
+              const SizedBox(height: 10),
+              if (line.batchMode == 'existing')
+                SearchableDropdown(
+                  label: 'Existing livestock batch',
+                  items: batches
+                      .map(
+                        (item) => {
+                          ...item,
+                          'label':
+                              '${item['batch_code']} · ${item['farm']?['name'] ?? 'Farm'} · ${item['current_quantity']} head',
+                        },
+                      )
+                      .toList(),
+                  value: line.referenceId,
+                  required: true,
+                  onChanged: (value) => setState(() {
+                    line.referenceId = value;
+                    final item = batches
+                        .where((entry) => entry['id'] == value)
+                        .firstOrNull;
+                    line.description.text =
+                        '${item?['batch_code'] ?? 'Existing batch'} · additional purchase';
+                  }),
+                )
+              else ...[
+                SearchableDropdown(
+                  label: 'Species',
+                  items: species,
+                  value: line.speciesId,
+                  required: true,
+                  onChanged: (value) => line.speciesId = value,
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: line.batchCode,
+                        decoration: InputDecoration(
+                          labelText: formFieldLabel(
+                            'Batch code',
+                            required: true,
+                          ),
+                        ),
+                        validator: _required,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: TextFormField(
+                        controller: line.breed,
+                        decoration: const InputDecoration(labelText: 'Breed'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ],
             const SizedBox(height: 10),
             TextFormField(
               controller: line.description,
-              decoration: const InputDecoration(labelText: 'Description'),
+              decoration: InputDecoration(
+                labelText: formFieldLabel('Description', required: true),
+              ),
               validator: _required,
             ),
             const SizedBox(height: 10),
@@ -812,7 +882,9 @@ class _TradeFormState extends State<TradeForm> {
               DropdownButtonFormField<String>(
                 key: ValueKey('sale-basis-${line.type}-${line.unit}'),
                 initialValue: line.unit,
-                decoration: const InputDecoration(labelText: 'Sell by'),
+                decoration: InputDecoration(
+                  labelText: formFieldLabel('Sell by', required: true),
+                ),
                 items: const [
                   DropdownMenuItem(value: 'head', child: Text('Piece / head')),
                   DropdownMenuItem(
@@ -829,7 +901,7 @@ class _TradeFormState extends State<TradeForm> {
               const SizedBox(height: 10),
               if (line.type == 'livestock' && line.unit == 'head')
                 const InputDecorator(
-                  decoration: InputDecoration(labelText: 'Sale quantity'),
+                  decoration: InputDecoration(labelText: 'Sale quantity *'),
                   child: Text('1 head'),
                 )
               else if (line.type == 'livestock' && line.unit == 'kg')
@@ -881,7 +953,7 @@ class _TradeFormState extends State<TradeForm> {
               ],
             ] else if (line.type == 'livestock' && !widget.isSale)
               const InputDecorator(
-                decoration: InputDecoration(labelText: 'Purchase quantity'),
+                decoration: InputDecoration(labelText: 'Purchase quantity *'),
                 child: Text('1 head'),
               )
             else
@@ -906,7 +978,9 @@ class _TradeFormState extends State<TradeForm> {
                           line.type == 'livestock_batch' && !widget.isSale
                           ? 'head'
                           : line.unit,
-                      decoration: const InputDecoration(labelText: 'Unit'),
+                      decoration: InputDecoration(
+                        labelText: formFieldLabel('Unit', required: true),
+                      ),
                       items:
                           ['kg', 'gram', 'litre', 'piece', 'head', 'bag', 'box']
                               .map(
@@ -1027,7 +1101,7 @@ class _InvoicePaymentFormState extends State<InvoicePaymentForm> {
             controller: amount,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             decoration: InputDecoration(
-              labelText: 'Amount',
+              labelText: formFieldLabel('Amount', required: true),
               helperText: 'Outstanding: ${moneyFormat.format(widget.due)}',
             ),
             validator: (value) {
@@ -1047,7 +1121,7 @@ class _InvoicePaymentFormState extends State<InvoicePaymentForm> {
                 color: Theme.of(context).colorScheme.outlineVariant,
               ),
             ),
-            title: const Text('Payment date'),
+            title: Text(formFieldLabel('Payment date', required: true)),
             subtitle: Text(displayDateFormat.format(date)),
             trailing: const Icon(Icons.calendar_month),
             onTap: () async {
@@ -1082,6 +1156,7 @@ class _InvoicePaymentFormState extends State<InvoicePaymentForm> {
 
 class _TradeLine {
   String type = 'inventory';
+  String batchMode = 'new';
   int? referenceId;
   int? speciesId;
   String? sex;

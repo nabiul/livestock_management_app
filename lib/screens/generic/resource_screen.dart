@@ -137,6 +137,203 @@ class _ResourceScreenState extends State<ResourceScreen> {
     if (mounted) _load();
   }
 
+  ({Color background, Color foreground}) _statusColors(String status) {
+    const positive = {
+      'active',
+      'available',
+      'completed',
+      'healthy',
+      'paid',
+      'received',
+    };
+    const negative = {
+      'cancelled',
+      'deceased',
+      'inactive',
+      'rejected',
+      'sick',
+      'sold',
+    };
+    const warning = {'due', 'partial', 'pending', 'pregnant'};
+
+    if (positive.contains(status)) {
+      return (
+        background: const Color(0xFFDFF5E7),
+        foreground: const Color(0xFF07883F),
+      );
+    }
+    if (negative.contains(status)) {
+      return (
+        background: const Color(0xFFFFE7E5),
+        foreground: const Color(0xFFD9443A),
+      );
+    }
+    if (warning.contains(status)) {
+      return (
+        background: const Color(0xFFFFF0D7),
+        foreground: const Color(0xFFB76A00),
+      );
+    }
+    return (
+      background: const Color(0xFFE6F1FF),
+      foreground: const Color(0xFF2775D8),
+    );
+  }
+
+  Widget? _statusPill(Map<String, dynamic> item) {
+    final status = '${item['status'] ?? ''}'.trim().toLowerCase();
+    if (status.isEmpty) return null;
+    final colors = _statusColors(status);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: colors.background,
+        borderRadius: BorderRadius.circular(99),
+      ),
+      child: Text(
+        status.replaceAll('_', ' '),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          color: colors.foreground,
+          fontSize: 10,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+
+  Widget _recordTile(Map<String, dynamic> item, int index) {
+    const palettes = [
+      (Color(0xFFDFF5E7), Color(0xFF07883F)),
+      (Color(0xFFE6F1FF), Color(0xFF2775D8)),
+      (Color(0xFFFFF0D7), Color(0xFFD9820B)),
+      (Color(0xFFF0E5FF), Color(0xFF8946D8)),
+    ];
+    final palette = palettes[index % palettes.length];
+    final status = _statusPill(item);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Material(
+        color: Colors.white,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(17),
+          side: const BorderSide(color: Color(0xFFE5ECE8)),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () => widget.detailBuilder == null ? _edit(item) : _view(item),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 11, 4, 11),
+            child: Row(
+              children: [
+                Container(
+                  width: 54,
+                  height: 54,
+                  decoration: BoxDecoration(
+                    color: palette.$1,
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  child: Icon(widget.icon, color: palette.$2, size: 27),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              widget.itemTitle(item),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Color(0xFF173B2A),
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                          if (status != null) ...[
+                            const SizedBox(width: 7),
+                            Flexible(child: status),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        widget.itemSubtitle(item),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Color(0xFF718078),
+                          fontSize: 12,
+                          height: 1.35,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (widget.trailing != null)
+                  widget.trailing!(item)
+                else
+                  PopupMenuButton<String>(
+                    tooltip: 'More actions',
+                    icon: const Icon(Icons.more_vert, color: Color(0xFF809087)),
+                    onSelected: (value) {
+                      if (value == 'view') _view(item);
+                      if (value == 'edit') _edit(item);
+                      if (value == 'delete') _delete(item);
+                    },
+                    itemBuilder: (_) => [
+                      if (widget.detailBuilder != null)
+                        const PopupMenuItem(
+                          value: 'view',
+                          child: ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: Icon(Icons.arrow_forward_outlined),
+                            title: Text('View details'),
+                          ),
+                        ),
+                      const PopupMenuItem(
+                        value: 'edit',
+                        child: ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: Icon(Icons.edit_outlined),
+                          title: Text('Edit'),
+                        ),
+                      ),
+                      if (widget.canDelete)
+                        const PopupMenuItem(
+                          value: 'delete',
+                          child: ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: Icon(
+                              Icons.delete_outline,
+                              color: Color(0xFFD9443A),
+                            ),
+                            title: Text('Delete'),
+                          ),
+                        ),
+                    ],
+                  ),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  size: 21,
+                  color: Color(0xFFA6B1AB),
+                ),
+                const SizedBox(width: 5),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final filtered = _items.where((item) {
@@ -171,6 +368,20 @@ class _ResourceScreenState extends State<ResourceScreen> {
               ),
             ),
           ),
+          if (!_loading && filtered.isNotEmpty)
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(17, 3, 17, 9),
+              sliver: SliverToBoxAdapter(
+                child: Text(
+                  '${filtered.length} ${filtered.length == 1 ? 'record' : 'records'}',
+                  style: const TextStyle(
+                    color: Color(0xFF718078),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
           if (_loading)
             const SliverFillRemaining(child: LoadingView())
           else if (filtered.isEmpty)
@@ -182,66 +393,8 @@ class _ResourceScreenState extends State<ResourceScreen> {
               padding: const EdgeInsets.fromLTRB(12, 4, 12, 30),
               sliver: SliverList.builder(
                 itemCount: filtered.length,
-                itemBuilder: (context, index) {
-                  final item = filtered[index];
-                  return Card(
-                    child: ListTile(
-                      onTap: widget.detailBuilder == null
-                          ? null
-                          : () => _view(item),
-                      contentPadding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
-                      leading: CircleAvatar(child: Icon(widget.icon)),
-                      title: Text(
-                        widget.itemTitle(item),
-                        style: const TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                      subtitle: Text(widget.itemSubtitle(item)),
-                      trailing:
-                          widget.trailing?.call(item) ??
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              if (widget.detailBuilder != null)
-                                IconButton(
-                                  onPressed: () => _view(item),
-                                  tooltip: 'View details',
-                                  icon: const Icon(Icons.visibility_outlined),
-                                ),
-                              PopupMenuButton<String>(
-                                tooltip: 'More actions',
-                                onSelected: (value) {
-                                  if (value == 'view') _view(item);
-                                  if (value == 'edit') _edit(item);
-                                  if (value == 'delete') _delete(item);
-                                },
-                                itemBuilder: (_) => [
-                                  if (widget.detailBuilder != null)
-                                    const PopupMenuItem(
-                                      value: 'view',
-                                      child: ListTile(
-                                        contentPadding: EdgeInsets.zero,
-                                        leading: Icon(
-                                          Icons.visibility_outlined,
-                                        ),
-                                        title: Text('View details'),
-                                      ),
-                                    ),
-                                  const PopupMenuItem(
-                                    value: 'edit',
-                                    child: Text('Edit'),
-                                  ),
-                                  if (widget.canDelete)
-                                    const PopupMenuItem(
-                                      value: 'delete',
-                                      child: Text('Delete'),
-                                    ),
-                                ],
-                              ),
-                            ],
-                          ),
-                    ),
-                  );
-                },
+                itemBuilder: (context, index) =>
+                    _recordTile(filtered[index], index),
               ),
             ),
         ],
@@ -438,7 +591,9 @@ class _ResourceFormState extends State<ResourceForm> {
         key: ValueKey('${field.key}:${_values[field.key]}'),
         initialValue: _values[field.key],
         isExpanded: true,
-        decoration: InputDecoration(labelText: field.label),
+        decoration: InputDecoration(
+          labelText: formFieldLabel(field.label, required: field.required),
+        ),
         items: field.options
             .map((value) => DropdownMenuItem(value: value, child: Text(value)))
             .toList(),
@@ -466,7 +621,9 @@ class _ResourceFormState extends State<ResourceForm> {
       return DropdownButtonFormField<int?>(
         initialValue: int.tryParse('${_values[field.key] ?? ''}'),
         isExpanded: true,
-        decoration: InputDecoration(labelText: field.label),
+        decoration: InputDecoration(
+          labelText: formFieldLabel(field.label, required: field.required),
+        ),
         items: [
           if (!field.required)
             const DropdownMenuItem<int?>(value: null, child: Text('None')),
@@ -518,7 +675,7 @@ class _ResourceFormState extends State<ResourceForm> {
           },
           child: InputDecorator(
             decoration: InputDecoration(
-              labelText: field.label,
+              labelText: formFieldLabel(field.label, required: field.required),
               errorText: state.errorText,
               suffixIcon: const Icon(Icons.calendar_month_outlined),
             ),
@@ -537,7 +694,9 @@ class _ResourceFormState extends State<ResourceForm> {
       keyboardType: field.type == FieldType.number
           ? const TextInputType.numberWithOptions(decimal: true)
           : TextInputType.text,
-      decoration: InputDecoration(labelText: field.label),
+      decoration: InputDecoration(
+        labelText: formFieldLabel(field.label, required: field.required),
+      ),
       validator: field.required
           ? (value) => value == null || value.trim().isEmpty
                 ? '${field.label} is required'

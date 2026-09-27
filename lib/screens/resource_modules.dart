@@ -4,6 +4,7 @@ import '../core/api_client.dart';
 import '../widgets/common.dart';
 import 'generic/resource_screen.dart';
 import 'livestock_detail_screen.dart';
+import 'investor_screen.dart';
 
 Widget farmsModule(ApiClient api) => ResourceScreen(
   api: api,
@@ -206,6 +207,8 @@ Widget accountsModule(ApiClient api) => ResourceScreen(
     ),
   ],
 );
+
+Widget investorsModule(ApiClient api) => InvestorsScreen(api: api);
 
 Widget productionModule(ApiClient api) => ResourceScreen(
   api: api,
