@@ -179,14 +179,25 @@ class SearchableDropdown extends StatelessWidget {
         DropdownMenu<int?>(
           initialSelection: value,
           expandedInsets: EdgeInsets.zero,
+          menuHeight: 310,
           enableFilter: true,
           enableSearch: true,
           requestFocusOnTap: true,
+          leadingIcon: const Icon(Icons.search_rounded, size: 20),
+          trailingIcon: const Icon(Icons.keyboard_arrow_down_rounded),
+          selectedTrailingIcon: const Icon(Icons.keyboard_arrow_up_rounded),
           label: Text(formFieldLabel(label, required: required)),
-          hintText: 'Search and select',
+          hintText: 'Type to search...',
           dropdownMenuEntries: [
             if (!required)
-              DropdownMenuEntry<int?>(value: null, label: emptyLabel),
+              DropdownMenuEntry<int?>(
+                value: null,
+                label: emptyLabel,
+                leadingIcon: const Icon(
+                  Icons.remove_circle_outline_rounded,
+                  size: 18,
+                ),
+              ),
             ...items.map(
               (item) => DropdownMenuEntry<int?>(
                 value: item['id'] as int?,
@@ -195,6 +206,13 @@ class SearchableDropdown extends StatelessWidget {
                     item['label']?.toString() ??
                     item['name']?.toString() ??
                     '#${item['id']}',
+                trailingIcon: state.value == item['id']
+                    ? const Icon(
+                        Icons.check_circle_rounded,
+                        color: Color(0xFF07883F),
+                        size: 19,
+                      )
+                    : null,
               ),
             ),
           ],
@@ -217,6 +235,107 @@ class SearchableDropdown extends StatelessWidget {
       ],
     ),
   );
+}
+
+class SearchableStringDropdown extends StatelessWidget {
+  const SearchableStringDropdown({
+    super.key,
+    required this.label,
+    required this.options,
+    required this.onChanged,
+    this.value,
+    this.required = false,
+    this.allowEmpty = false,
+    this.emptyLabel = 'None',
+    this.labels = const {},
+    this.enabled = true,
+  });
+
+  final String label;
+  final List<String> options;
+  final String? value;
+  final ValueChanged<String?> onChanged;
+  final bool required;
+  final bool allowEmpty;
+  final String emptyLabel;
+  final Map<String, String> labels;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) => FormField<String>(
+    initialValue: value,
+    validator: required
+        ? (selected) =>
+              selected == null || selected.isEmpty ? '$label is required' : null
+        : null,
+    builder: (state) => Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        DropdownMenu<String>(
+          enabled: enabled,
+          initialSelection: value,
+          expandedInsets: EdgeInsets.zero,
+          menuHeight: 310,
+          enableFilter: true,
+          enableSearch: true,
+          requestFocusOnTap: true,
+          leadingIcon: const Icon(Icons.search_rounded, size: 20),
+          trailingIcon: const Icon(Icons.keyboard_arrow_down_rounded),
+          selectedTrailingIcon: const Icon(Icons.keyboard_arrow_up_rounded),
+          label: Text(formFieldLabel(label, required: required)),
+          hintText: 'Type to search...',
+          dropdownMenuEntries: [
+            if (allowEmpty)
+              DropdownMenuEntry<String>(
+                value: '',
+                label: emptyLabel,
+                leadingIcon: const Icon(
+                  Icons.remove_circle_outline_rounded,
+                  size: 18,
+                ),
+              ),
+            ...options.map(
+              (option) => DropdownMenuEntry<String>(
+                value: option,
+                label: labels[option] ?? _readableOption(option),
+                trailingIcon: state.value == option
+                    ? const Icon(
+                        Icons.check_circle_rounded,
+                        color: Color(0xFF07883F),
+                        size: 19,
+                      )
+                    : null,
+              ),
+            ),
+          ],
+          onSelected: enabled
+              ? (selected) {
+                  final value = selected == '' ? null : selected;
+                  state.didChange(value);
+                  onChanged(value);
+                }
+              : null,
+        ),
+        if (state.hasError)
+          Padding(
+            padding: const EdgeInsets.only(left: 12, top: 6),
+            child: Text(
+              state.errorText!,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.error,
+                fontSize: 12,
+              ),
+            ),
+          ),
+      ],
+    ),
+  );
+
+  static String _readableOption(String value) {
+    if (value.isEmpty) return value;
+    final words = value.replaceAll('_', ' ');
+    return '${words[0].toUpperCase()}${words.substring(1)}';
+  }
 }
 
 class SectionHeader extends StatelessWidget {

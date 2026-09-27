@@ -285,15 +285,11 @@ class _UserFormState extends State<UserForm> {
           onChanged: (value) => roleId = value,
         ),
         const SizedBox(height: 12),
-        DropdownButtonFormField<String>(
-          initialValue: status,
-          decoration: InputDecoration(
-            labelText: formFieldLabel('Status', required: true),
-          ),
-          items: const [
-            DropdownMenuItem(value: 'active', child: Text('Active')),
-            DropdownMenuItem(value: 'inactive', child: Text('Inactive')),
-          ],
+        SearchableStringDropdown(
+          label: 'Status',
+          options: const ['active', 'inactive'],
+          value: status,
+          required: true,
           onChanged: (value) => status = value ?? 'active',
         ),
         const SizedBox(height: 18),

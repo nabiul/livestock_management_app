@@ -835,19 +835,16 @@ class _InventoryMovementFormState extends State<InventoryMovementForm> {
             onChanged: (value) => itemId = value,
           ),
           const SizedBox(height: 12),
-          DropdownButtonFormField<String>(
-            initialValue: sourceType,
-            decoration: InputDecoration(
-              labelText: formFieldLabel('Movement source', required: true),
-            ),
-            items: const [
-              DropdownMenuItem(value: 'general', child: Text('General stock')),
-              DropdownMenuItem(
-                value: 'individual',
-                child: Text('Individual livestock'),
-              ),
-              DropdownMenuItem(value: 'batch', child: Text('Livestock batch')),
-            ],
+          SearchableStringDropdown(
+            label: 'Movement source',
+            options: const ['general', 'individual', 'batch'],
+            labels: const {
+              'general': 'General stock',
+              'individual': 'Individual livestock',
+              'batch': 'Livestock batch',
+            },
+            value: sourceType,
+            required: true,
             onChanged: (value) => setState(() {
               sourceType = value ?? 'general';
               animalId = null;
@@ -888,34 +885,30 @@ class _InventoryMovementFormState extends State<InventoryMovementForm> {
             ),
           ],
           const SizedBox(height: 12),
-          DropdownButtonFormField<String>(
-            initialValue: type,
-            decoration: InputDecoration(
-              labelText: formFieldLabel('Movement type', required: true),
-            ),
-            items:
-                ['purchase', 'consumption', 'wastage', 'return', 'adjustment']
-                    .map(
-                      (value) =>
-                          DropdownMenuItem(value: value, child: Text(value)),
-                    )
-                    .toList(),
+          SearchableStringDropdown(
+            label: 'Movement type',
+            options: const [
+              'purchase',
+              'consumption',
+              'wastage',
+              'return',
+              'adjustment',
+            ],
+            value: type,
+            required: true,
             onChanged: (value) => setState(() {
               type = value ?? 'consumption';
               direction = ['purchase', 'return'].contains(type) ? 'in' : 'out';
             }),
           ),
           const SizedBox(height: 12),
-          DropdownButtonFormField<String>(
+          SearchableStringDropdown(
             key: ValueKey('movement-direction:$direction'),
-            initialValue: direction,
-            decoration: InputDecoration(
-              labelText: formFieldLabel('Direction', required: true),
-            ),
-            items: const [
-              DropdownMenuItem(value: 'in', child: Text('Stock in')),
-              DropdownMenuItem(value: 'out', child: Text('Stock out')),
-            ],
+            label: 'Direction',
+            options: const ['in', 'out'],
+            labels: const {'in': 'Stock in', 'out': 'Stock out'},
+            value: direction,
+            required: true,
             onChanged: (value) => direction = value ?? 'out',
           ),
           const SizedBox(height: 12),

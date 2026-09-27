@@ -584,19 +584,11 @@ class _TradeFormState extends State<TradeForm> {
             Row(
               children: [
                 Expanded(
-                  child: DropdownButtonFormField<String>(
-                    initialValue: line.type,
-                    decoration: InputDecoration(
-                      labelText: formFieldLabel('Item type', required: true),
-                    ),
-                    items: types
-                        .map(
-                          (type) => DropdownMenuItem(
-                            value: type,
-                            child: Text(type.replaceAll('_', ' ')),
-                          ),
-                        )
-                        .toList(),
+                  child: SearchableStringDropdown(
+                    label: 'Item type',
+                    options: types,
+                    value: line.type,
+                    required: true,
                     onChanged: (value) => setState(() {
                       line.type = value ?? 'inventory';
                       line.referenceId = null;
@@ -694,23 +686,12 @@ class _TradeFormState extends State<TradeForm> {
                   ),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: DropdownButtonFormField<String?>(
-                      initialValue: line.sex,
-                      decoration: const InputDecoration(labelText: 'Sex'),
-                      items: const [
-                        DropdownMenuItem<String?>(
-                          value: null,
-                          child: Text('Not specified'),
-                        ),
-                        DropdownMenuItem<String?>(
-                          value: 'male',
-                          child: Text('Male'),
-                        ),
-                        DropdownMenuItem<String?>(
-                          value: 'female',
-                          child: Text('Female'),
-                        ),
-                      ],
+                    child: SearchableStringDropdown(
+                      label: 'Sex',
+                      options: const ['male', 'female'],
+                      value: line.sex,
+                      allowEmpty: true,
+                      emptyLabel: 'Not specified',
                       onChanged: (value) => line.sex = value,
                     ),
                   ),
@@ -782,25 +763,16 @@ class _TradeFormState extends State<TradeForm> {
                 }),
               ),
             if (line.type == 'livestock_batch' && !widget.isSale) ...[
-              DropdownButtonFormField<String>(
+              SearchableStringDropdown(
                 key: ValueKey('batch-mode-${line.batchMode}'),
-                initialValue: line.batchMode,
-                decoration: InputDecoration(
-                  labelText: formFieldLabel(
-                    'Purchase batch into',
-                    required: true,
-                  ),
-                ),
-                items: const [
-                  DropdownMenuItem(
-                    value: 'new',
-                    child: Text('Create new batch'),
-                  ),
-                  DropdownMenuItem(
-                    value: 'existing',
-                    child: Text('Add to existing batch'),
-                  ),
-                ],
+                label: 'Purchase batch into',
+                options: const ['new', 'existing'],
+                labels: const {
+                  'new': 'Create new batch',
+                  'existing': 'Add to existing batch',
+                },
+                value: line.batchMode,
+                required: true,
                 onChanged: (value) => setState(() {
                   line.batchMode = value ?? 'new';
                   line.referenceId = null;
@@ -879,19 +851,16 @@ class _TradeFormState extends State<TradeForm> {
             if (widget.isSale &&
                 (line.type == 'livestock' ||
                     line.type == 'livestock_batch')) ...[
-              DropdownButtonFormField<String>(
+              SearchableStringDropdown(
                 key: ValueKey('sale-basis-${line.type}-${line.unit}'),
-                initialValue: line.unit,
-                decoration: InputDecoration(
-                  labelText: formFieldLabel('Sell by', required: true),
-                ),
-                items: const [
-                  DropdownMenuItem(value: 'head', child: Text('Piece / head')),
-                  DropdownMenuItem(
-                    value: 'kg',
-                    child: Text('Live weight (kg)'),
-                  ),
-                ],
+                label: 'Sell by',
+                options: const ['head', 'kg'],
+                labels: const {
+                  'head': 'Piece / head',
+                  'kg': 'Live weight (kg)',
+                },
+                value: line.unit,
+                required: true,
                 onChanged: (value) => setState(() {
                   line.unit = value ?? 'head';
                   line.quantity.text = line.unit == 'head' ? '1' : '';
@@ -972,29 +941,26 @@ class _TradeFormState extends State<TradeForm> {
                   ),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: DropdownButtonFormField<String>(
+                    child: SearchableStringDropdown(
                       key: ValueKey('${line.type}-${line.unit}'),
-                      initialValue:
-                          line.type == 'livestock_batch' && !widget.isSale
+                      value: line.type == 'livestock_batch' && !widget.isSale
                           ? 'head'
                           : line.unit,
-                      decoration: InputDecoration(
-                        labelText: formFieldLabel('Unit', required: true),
-                      ),
-                      items:
-                          ['kg', 'gram', 'litre', 'piece', 'head', 'bag', 'box']
-                              .map(
-                                (unit) => DropdownMenuItem(
-                                  value: unit,
-                                  child: Text(unit),
-                                ),
-                              )
-                              .toList(),
-                      onChanged:
-                          line.type == 'livestock_batch' && !widget.isSale
-                          ? null
-                          : (value) =>
-                                setState(() => line.unit = value ?? 'kg'),
+                      label: 'Unit',
+                      options: const [
+                        'kg',
+                        'gram',
+                        'litre',
+                        'piece',
+                        'head',
+                        'bag',
+                        'box',
+                      ],
+                      required: true,
+                      enabled:
+                          !(line.type == 'livestock_batch' && !widget.isSale),
+                      onChanged: (value) =>
+                          setState(() => line.unit = value ?? 'kg'),
                     ),
                   ),
                 ],

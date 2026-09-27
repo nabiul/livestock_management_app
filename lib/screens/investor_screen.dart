@@ -1105,24 +1105,20 @@ class _InvestorTransactionFormState extends State<InvestorTransactionForm> {
     key: key,
     child: Column(
       children: [
-        DropdownButtonFormField<String>(
-          initialValue: type,
-          decoration: InputDecoration(
-            labelText: formFieldLabel('Transaction type', required: true),
-          ),
-          items:
-              const {
-                    'capital_contribution': 'Capital contribution',
-                    'capital_withdrawal': 'Capital withdrawal',
-                    'profit_distribution': 'Profit distribution',
-                  }.entries
-                  .map(
-                    (entry) => DropdownMenuItem(
-                      value: entry.key,
-                      child: Text(entry.value),
-                    ),
-                  )
-                  .toList(),
+        SearchableStringDropdown(
+          label: 'Transaction type',
+          options: const [
+            'capital_contribution',
+            'capital_withdrawal',
+            'profit_distribution',
+          ],
+          labels: const {
+            'capital_contribution': 'Capital contribution',
+            'capital_withdrawal': 'Capital withdrawal',
+            'profit_distribution': 'Profit distribution',
+          },
+          value: type,
+          required: true,
           onChanged: (value) => setState(() => type = value ?? type),
         ),
         const SizedBox(height: 12),

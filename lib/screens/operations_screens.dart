@@ -379,19 +379,12 @@ class _HealthScreenState extends State<HealthScreen> {
           child: Row(
             children: [
               Expanded(
-                child: DropdownButtonFormField<int>(
-                  initialValue: animalId,
-                  decoration: const InputDecoration(labelText: 'Animal'),
-                  items: animals
-                      .map(
-                        (animal) => DropdownMenuItem(
-                          value: animal['id'] as int,
-                          child: Text(
-                            '${animal['tag_number']} ${animal['name'] ?? ''}',
-                          ),
-                        ),
-                      )
-                      .toList(),
+                child: SearchableDropdown(
+                  label: 'Animal',
+                  items: animals,
+                  value: animalId,
+                  labelBuilder: (animal) =>
+                      '${animal['tag_number']} ${animal['name'] ?? ''}',
                   onChanged: (value) {
                     animalId = value;
                     loadRecords();

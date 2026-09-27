@@ -171,30 +171,26 @@ class _LoginScreenState extends State<LoginScreen> {
                                 : null,
                           ),
                           const SizedBox(height: 12),
-                          DropdownButtonFormField<String>(
-                            initialValue: _farmType,
-                            decoration: InputDecoration(
-                              labelText: formFieldLabel(
-                                'Farm type',
-                                required: true,
-                              ),
-                            ),
-                            items:
-                                const [
-                                      'cattle',
-                                      'dairy',
-                                      'goat',
-                                      'sheep',
-                                      'poultry',
-                                      'mixed',
-                                    ]
-                                    .map(
-                                      (value) => DropdownMenuItem(
-                                        value: value,
-                                        child: Text(value.toUpperCase()),
-                                      ),
-                                    )
-                                    .toList(),
+                          SearchableStringDropdown(
+                            label: 'Farm type',
+                            options: const [
+                              'cattle',
+                              'dairy',
+                              'goat',
+                              'sheep',
+                              'poultry',
+                              'mixed',
+                            ],
+                            labels: const {
+                              'cattle': 'CATTLE',
+                              'dairy': 'DAIRY',
+                              'goat': 'GOAT',
+                              'sheep': 'SHEEP',
+                              'poultry': 'POULTRY',
+                              'mixed': 'MIXED',
+                            },
+                            value: _farmType,
+                            required: true,
                             onChanged: (value) => _farmType = value ?? 'mixed',
                           ),
                           const SizedBox(height: 12),

@@ -603,19 +603,13 @@ class _ResourceFormState extends State<ResourceForm> {
 
   Widget _field(FieldSpec field) {
     if (field.type == FieldType.select) {
-      return DropdownButtonFormField<dynamic>(
+      return SearchableStringDropdown(
         key: ValueKey('${field.key}:${_values[field.key]}'),
-        initialValue: _values[field.key],
-        isExpanded: true,
-        decoration: InputDecoration(
-          labelText: formFieldLabel(field.label, required: field.required),
-        ),
-        items: field.options
-            .map((value) => DropdownMenuItem(value: value, child: Text(value)))
-            .toList(),
-        validator: field.required
-            ? (value) => value == null ? '${field.label} is required' : null
-            : null,
+        label: field.label,
+        options: field.options,
+        value: _values[field.key]?.toString(),
+        required: field.required,
+        allowEmpty: !field.required,
         onChanged: (value) => setState(() {
           _values[field.key] = value;
           if (field.key == 'type' &&
@@ -638,32 +632,18 @@ class _ResourceFormState extends State<ResourceForm> {
     }
     if (field.type == FieldType.lookup) {
       final items = _lookupItems(field);
-      return DropdownButtonFormField<int?>(
+      return SearchableDropdown(
         key: ValueKey(
           '${field.key}:${_values[field.key]}:${field.key == 'financial_category_id' ? _values['type'] : ''}',
         ),
-        initialValue: int.tryParse('${_values[field.key] ?? ''}'),
-        isExpanded: true,
-        decoration: InputDecoration(
-          labelText: formFieldLabel(field.label, required: field.required),
-        ),
-        items: [
-          if (!field.required)
-            const DropdownMenuItem<int?>(value: null, child: Text('None')),
-          ...items.map(
-            (item) => DropdownMenuItem<int?>(
-              value: item['id'] as int?,
-              child: Text(
-                field.lookupLabel?.call(item) ??
-                    item['name']?.toString() ??
-                    '#${item['id']}',
-              ),
-            ),
-          ),
-        ],
-        validator: field.required
-            ? (value) => value == null ? '${field.label} is required' : null
-            : null,
+        label: field.label,
+        items: items,
+        value: int.tryParse('${_values[field.key] ?? ''}'),
+        required: field.required,
+        labelBuilder: (item) =>
+            field.lookupLabel?.call(item) ??
+            item['name']?.toString() ??
+            '#${item['id']}',
         onChanged: (value) => setState(() => _values[field.key] = value),
       );
     }
